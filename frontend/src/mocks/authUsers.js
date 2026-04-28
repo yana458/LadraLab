@@ -1,0 +1,67 @@
+export const mockUsersSeed = [
+  {
+    id: 1,
+    name: 'Ana Tutor',
+    email: 'cliente@ladralab.test',
+    password: '12345678',
+    role: 'client',
+    phone: '+34 622 381 547',
+    is_active: true,
+    created_at: '2026-01-10T09:00:00',
+    updated_at: '2026-04-14T10:30:00',
+  },
+  {
+    id: 2,
+    name: 'Sergio Staff',
+    email: 'staff@ladralab.test',
+    password: '12345678',
+    role: 'staff',
+    phone: '+34 600 111 222',
+    is_active: true,
+    created_at: '2026-01-10T09:00:00',
+    updated_at: '2026-04-14T10:30:00',
+  },
+  {
+    id: 3,
+    name: 'Alicia Admin',
+    email: 'admin@ladralab.test',
+    password: '12345678',
+    role: 'admin',
+    phone: '+34 600 333 444',
+    is_active: true,
+    created_at: '2026-01-10T09:00:00',
+    updated_at: '2026-04-14T10:30:00',
+  },
+  {
+    id: 4,
+    name: 'Usuario Inactivo',
+    email: 'bloqueado@ladralab.test',
+    password: '12345678',
+    role: 'client',
+    phone: '+34 600 999 999',
+    is_active: false,
+    created_at: '2026-01-10T09:00:00',
+    updated_at: '2026-04-14T10:30:00',
+  },
+]
+
+export const demoAccesses = [
+  {
+    label: 'Cliente',
+    email: 'cliente@ladralab.test',
+    password: '12345678',
+    role: 'cliente',
+  },
+  {
+    label: 'Staff',
+    email: 'staff@ladralab.test',
+    password: '12345678',
+    role: 'staff',
+  },
+  {
+    label: 'Admin',
+    email: 'admin@ladralab.test',
+    password: '12345678',
+    role: 'admin',
+  },
+]

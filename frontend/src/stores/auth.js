@@ -4,15 +4,31 @@ import { mockUsersSeed } from '@/mocks/authUsers'
 const AUTH_STORAGE_KEY = 'ladralab_auth_session'
 const USERS_STORAGE_KEY = 'ladralab_mock_users'
 
+function normalizeRole(role) {
+  if (role === 'client') return 'cliente'
+  return role
+}
+
+function normalizeUser(user) {
+  if (!user) return null
+
+  return {
+    ...user,
+    role: normalizeRole(user.role),
+  }
+}
+
 function sanitizeUser(user) {
   if (!user) return null
 
-  const { password, ...safeUser } = user
+  const normalizedUser = normalizeUser(user)
+  const { password, ...safeUser } = normalizedUser
+
   return safeUser
 }
 
 function getSeedUsers() {
-  return JSON.parse(JSON.stringify(mockUsersSeed))
+  return JSON.parse(JSON.stringify(mockUsersSeed)).map(normalizeUser)
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -43,16 +59,20 @@ export const useAuthStore = defineStore('auth', {
       if (this.hasHydrated) return
 
       const savedUsers = localStorage.getItem(USERS_STORAGE_KEY)
-      this.users = savedUsers ? JSON.parse(savedUsers) : getSeedUsers()
+      this.users = savedUsers
+        ? JSON.parse(savedUsers).map(normalizeUser)
+        : getSeedUsers()
 
       const savedSession = localStorage.getItem(AUTH_STORAGE_KEY)
 
       if (savedSession) {
         const session = JSON.parse(savedSession)
-        this.user = session.user ?? null
+        this.user = normalizeUser(session.user ?? null)
         this.token = session.token ?? null
       }
 
+      this.persistUsers()
+      this.persistSession()
       this.hasHydrated = true
     },
 
@@ -84,16 +104,16 @@ export const useAuthStore = defineStore('auth', {
     },
 
     getDefaultRouteByRole(role = this.user?.role) {
-        switch (role) {
-            case 'cliente':
-            return '/dashboard/cliente'
-            case 'staff':
-            return '/dashboard/staff'
-            case 'admin':
-            return '/dashboard/admin'
-            default:
-            return '/login'
-        }
+      switch (normalizeRole(role)) {
+        case 'cliente':
+          return '/dashboard/cliente'
+        case 'staff':
+          return '/dashboard/staff'
+        case 'admin':
+          return '/dashboard/admin'
+        default:
+          return '/login'
+      }
     },
 
     async login({ email, password }) {

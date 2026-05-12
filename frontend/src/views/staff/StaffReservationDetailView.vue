@@ -322,7 +322,7 @@
                       {{ countReportChecks(report) }}/{{ checklistOptions.length }} checks
                     </span>
                     <span class="rounded-full bg-white px-3 py-1">
-                      {{ Array.isArray(report.media) ? report.media.length : 0 }} fotos
+                      {{ getReportImages(report).length }} fotos
                     </span>
                   </div>
                 </article>
@@ -423,7 +423,7 @@
             Reserva no encontrada
           </h1>
           <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-            No hemos encontrado una reserva con ese identificador. Puede que no exista en los datos demo o que se haya eliminado.
+            No hemos encontrado una reserva con ese identificador. Puede que no exista o que ya no esté disponible.
           </p>
           <RouterLink
             :to="{ name: 'staff-reservations' }"
@@ -576,14 +576,19 @@
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import ReservationForm from '@/components/reservations/ReservationForm.vue'
-import { petsMock } from '@/mocks/petsMock'
-import { reservationsMock } from '@/mocks/reservationsMock'
-import { servicesMock } from '@/mocks/servicesMock'
-import { resourcesMock } from '@/mocks/resourcesMock'
+import { apiRequest, normalizeCollectionResponse } from '@/services/apiClient'
+import {
+  getStaffReservations,
+  getStaffReservationById,
+  updateStaffReservation,
+  confirmStaffReservation,
+  cancelStaffReservation,
+} from '@/services/staffReservationsService'
+import { getServices } from '@/services/servicesService'
+import { getResources } from '@/services/resourcesService'
+import { getReservationDailyLogs } from '@/services/dailyLogsService'
+import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
-
-// Cuando backend esté conectado, puedes sustituir el uso de mocks por un servicio real:
-// import { getStaffReservation, updateStaffReservation, cancelStaffReservation } from '@/services/staffReservationsService'
 
 const InfoCard = defineComponent({
   name: 'InfoCard',
@@ -620,6 +625,7 @@ const InfoLine = defineComponent({
 })
 
 const route = useRoute()
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const staffReservationsMessages = uiMessages.staffReservations || {
   success: {
@@ -634,39 +640,6 @@ const staffReservationsMessages = uiMessages.staffReservations || {
     cancel: 'No se pudo cancelar la reserva.',
     resourceRequired: 'Este servicio necesita un recurso compatible antes de confirmarse.',
     resourceUnavailable: 'Ese recurso ya no está disponible para esas fechas.',
-  },
-}
-
-const mockClientsByUserId = {
-  1: {
-    name: 'Ana Tutor',
-    email: 'ana.tutor@ladralab.demo',
-    phone: '622 104 589',
-    whatsapp: '622 104 589',
-  },
-  2: {
-    name: 'Laura Gómez',
-    email: 'laura.gomez@ladralab.demo',
-    phone: '610 845 233',
-    whatsapp: '610 845 233',
-  },
-  3: {
-    name: 'Marcos Peña',
-    email: 'marcos.pena@ladralab.demo',
-    phone: '628 450 917',
-    whatsapp: '628 450 917',
-  },
-  4: {
-    name: 'Sara León',
-    email: 'sara.leon@ladralab.demo',
-    phone: '604 733 128',
-    whatsapp: '604 733 128',
-  },
-  5: {
-    name: 'Iván Díaz',
-    email: 'ivan.diaz@ladralab.demo',
-    phone: '619 208 774',
-    whatsapp: '619 208 774',
   },
 }
 
@@ -694,7 +667,7 @@ const services = ref([])
 const resources = ref([])
 
 const isReservationModalOpen = ref(false)
-const reservationModalMode = ref('edit') // edit | review
+const reservationModalMode = ref('edit')
 const editingReservation = ref(null)
 const reservationToCancel = ref(null)
 
@@ -714,17 +687,75 @@ async function loadReservationDetail() {
   successMessage.value = ''
 
   try {
-    await wait()
+    const id = Number(route.params.id || 0)
 
-    pets.value = petsMock.map((item) => ({ ...item }))
-    services.value = servicesMock.filter((item) => item.is_active !== false).map((item) => ({ ...item }))
-    resources.value = resourcesMock.map((item) => ({ ...item }))
-    reservations.value = reservationsMock.map((item) => ({ ...item }))
+    const [reservationData, reservationsData, petsData, servicesData, resourcesData, reportsData] = await Promise.all([
+      getStaffReservationById(id),
+      getStaffReservations(),
+      getStaffPets(),
+      getServices(),
+      getResources(),
+      getReservationDailyLogs(id),
+    ])
+
+    pets.value = Array.isArray(petsData) ? petsData : []
+    services.value = Array.isArray(servicesData)
+      ? servicesData.filter((item) => item.is_active !== false)
+      : []
+    resources.value = Array.isArray(resourcesData) ? resourcesData : []
+
+    const reservationWithReports = {
+      ...reservationData,
+      daily_reports: Array.isArray(reportsData) ? reportsData : [],
+    }
+
+    const mergedReservations = Array.isArray(reservationsData) ? reservationsData : []
+    const hasDetailReservation = mergedReservations.some((item) => Number(item.id) === Number(id))
+
+    reservations.value = hasDetailReservation
+      ? mergedReservations.map((item) =>
+          Number(item.id) === Number(id)
+            ? {
+                ...item,
+                ...reservationWithReports,
+              }
+            : item,
+        )
+      : [reservationWithReports, ...mergedReservations]
   } catch (error) {
     console.error(error)
-    loadError.value = staffReservationsMessages.errors?.load || 'No hemos podido cargar la reserva por ahora.'
+    loadError.value = getReadableErrorMessage(
+      error,
+      staffReservationsMessages.errors?.load || 'No hemos podido cargar la reserva por ahora.',
+    )
   } finally {
     isLoading.value = false
+  }
+}
+
+async function getStaffPets() {
+  const data = await apiRequest('/api/staff/pets', {
+    method: 'GET',
+  })
+
+  return normalizeCollectionResponse(data).map(normalizeStaffPet)
+}
+
+function normalizeStaffPet(pet = {}) {
+  return {
+    id: pet.id,
+    owner_user_id: pet.owner_user_id ?? pet.owner?.id ?? null,
+    owner: pet.owner ?? null,
+    name: pet.name ?? '',
+    breed: pet.breed ?? '',
+    species: pet.species ?? '',
+    size: pet.size ?? '',
+    birth_date: pet.birth_date ?? null,
+    care_notes: pet.care_notes ?? '',
+    photo_path: pet.photo_path ?? '',
+    photo_url: pet.photo_url ?? '',
+    created_at: pet.created_at ?? null,
+    updated_at: pet.updated_at ?? null,
   }
 }
 
@@ -799,7 +830,6 @@ const modalPet = computed(() => {
 })
 
 const modalNeedsResource = computed(() => serviceNeedsResource(modalService.value))
-
 const modalRange = computed(() => getDraftDateRange(reservationDraft.value, modalService.value))
 
 const modalCompatibleResources = computed(() => {
@@ -809,8 +839,8 @@ const modalCompatibleResources = computed(() => {
   const sizeGroup = petSizeGroup(pet?.size)
 
   return resources.value.filter((resource) => {
-    if (resource.status !== 'active') return false
-    if (zone && resource.zone !== zone) return false
+    if (resource.status !== 'active' && Number(resource.id) !== Number(editingReservation.value?.resource_id)) return false
+    if (zone && resource.zone !== zone && resource.zone !== 'support') return false
     if (resource.size_group !== 'all' && resource.size_group !== sizeGroup) return false
     return true
   })
@@ -824,48 +854,55 @@ const resourceHelperText = computed(() => {
 })
 
 function enrichReservation(item) {
-  const pet = pets.value.find((petItem) => Number(petItem.id) === Number(item.pet_id)) || item.pet || null
-  const service = services.value.find((serviceItem) => Number(serviceItem.id) === Number(item.service_id)) || item.service || null
-  const resource = resources.value.find((resourceItem) => Number(resourceItem.id) === Number(item.resource_id)) || item.resource || null
+  const pet = item.pet || pets.value.find((petItem) => Number(petItem.id) === Number(item.pet_id)) || null
+  const service = item.service || services.value.find((serviceItem) => Number(serviceItem.id) === Number(item.service_id)) || null
+  const resource = item.resource || resources.value.find((resourceItem) => Number(resourceItem.id) === Number(item.resource_id)) || null
+  const client = item.client || pet?.owner || null
 
   return {
     ...item,
     pet,
     service,
     resource,
+    pet_id: item.pet_id ?? pet?.id ?? null,
+    service_id: item.service_id ?? service?.id ?? null,
+    resource_id: item.resource_id ?? resource?.id ?? null,
     pet_name: pet?.name || item.pet_name || 'Mascota',
     pet_breed: pet?.breed || item.pet_breed || '',
     pet_size: pet?.size || item.pet_size || '',
-    pet_image: pet?.photo_path || item.pet_image || '',
+    pet_image: getStorageUrl(
+      pet?.photo_preview ||
+        pet?.photo_url ||
+        pet?.photo_path ||
+        item.pet_image ||
+        '',
+    ),
     client_name:
       item.client_name ||
-      item.client?.name ||
-      mockClientsByUserId[item.client_user_id]?.name ||
-      `Cliente ${item.client_user_id ?? ''}`,
+      client?.name ||
+      (item.client_user_id ? `Cliente ${item.client_user_id}` : 'Cliente'),
     client_email:
       item.client_email ||
-      item.client?.email ||
-      mockClientsByUserId[item.client_user_id]?.email ||
+      client?.email ||
       'No disponible',
     client_phone:
       item.client_phone ||
-      item.client?.phone ||
-      mockClientsByUserId[item.client_user_id]?.phone ||
+      client?.phone ||
       'No disponible',
     client_whatsapp:
       item.client_whatsapp ||
-      item.client?.whatsapp ||
-      mockClientsByUserId[item.client_user_id]?.whatsapp ||
+      client?.whatsapp ||
+      client?.phone ||
       item.client_phone ||
-      item.client?.phone ||
       'No disponible',
     service_name: item.service_name || service?.name || 'Servicio',
     resource_name: item.resource_name || resource?.name || '',
+    daily_reports: Array.isArray(item.daily_reports)
+      ? item.daily_reports
+      : Array.isArray(item.dailyReports)
+        ? item.dailyReports
+        : [],
   }
-}
-
-function wait(ms = 160) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function getPetById(id) {
@@ -883,7 +920,6 @@ function getResourceById(id) {
 function buildFollowUpLink(reportDate = null) {
   const date = normalizeDateKey(reportDate || reservation.value?.start_at || new Date().toISOString())
 
-  // Ajusta el name si tu router usa otro nombre para la vista de seguimiento.
   return {
     name: 'staff-followups',
     query: {
@@ -894,16 +930,31 @@ function buildFollowUpLink(reportDate = null) {
 }
 
 function formatDate(dateValue, options = {}) {
+  if (!dateValue) return 'No disponible'
   return new Intl.DateTimeFormat('es-ES', options).format(new Date(dateValue))
 }
 
 function formatTime(dateValue) {
+  if (!dateValue) return 'No disponible'
   return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(dateValue))
 }
 
 function normalizeDateKey(value) {
   if (!value) return ''
-  return String(value).slice(0, 10)
+
+  const rawValue = String(value)
+  const match = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
+
+  if (match) return match[1]
+
+  const date = new Date(rawValue)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+
+  return `${year}-${month}-${day}`
 }
 
 function formatDateInput(dateString) {
@@ -911,7 +962,20 @@ function formatDateInput(dateString) {
 }
 
 function formatTimeInput(dateString) {
-  return String(dateString || '').slice(11, 16)
+  if (!dateString) return ''
+
+  const value = String(dateString)
+  const match = value.match(/T?(\d{2}):(\d{2})/)
+
+  if (match) return `${match[1]}:${match[2]}`
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const hours = `${date.getHours()}`.padStart(2, '0')
+  const minutes = `${date.getMinutes()}`.padStart(2, '0')
+
+  return `${hours}:${minutes}`
 }
 
 function reservationDateLabel(item) {
@@ -981,21 +1045,41 @@ function statusBadgeClass(status) {
 }
 
 function reportStatusLabel(report) {
+  const status = String(report?.status || '').toLowerCase()
+
   if (!report) return 'Pendiente'
-  if (report.status === 'draft') return 'Borrador'
-  if (report.status === 'published') return 'Publicado'
-  if (report.status === 'completed' || report.completed_at) return 'Completado'
-  return 'Completado'
+  if (status === 'draft') return 'Borrador'
+  if (status === 'published') return 'Publicado'
+  if (status === 'completed' || report.completed_at) return 'Completado'
+
+  return 'Registrado'
 }
 
 function reportStatusClass(report) {
+  const status = String(report?.status || '').toLowerCase()
+
   if (!report) return 'bg-amber-50 text-amber-700 ring-amber-100'
-  if (report.status === 'draft') return 'bg-[#FFF0F8] text-[#A22068] ring-[#F7CBE1]'
+  if (status === 'draft') return 'bg-[#FFF0F8] text-[#A22068] ring-[#F7CBE1]'
   return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
 }
 
 function countReportChecks(report) {
   return checklistOptions.filter((item) => Boolean(report?.[item.key])).length
+}
+
+function getReportImages(report) {
+  const media = Array.isArray(report?.media) ? report.media : []
+  const photos = Array.isArray(report?.photos) ? report.photos : []
+
+  return [...media, ...photos].filter((item) => {
+    const type = String(item?.file_type || item?.type || '').toLowerCase()
+    const path = item?.url || item?.file_url || item?.file_path || item?.path || ''
+
+    if (!path) return false
+    if (type && type !== 'image') return false
+
+    return true
+  })
 }
 
 function petSizeLabel(size) {
@@ -1022,6 +1106,7 @@ function resourceTypeLabel(type) {
     kennel: 'Suite / kennel',
     yard: 'Patio',
     room: 'Sala',
+    other: 'Otro',
   }
 
   return map[type] || type || 'Recurso'
@@ -1067,6 +1152,8 @@ function buildDraftFromReservation(item) {
   return {
     pet_id: item.pet_id,
     service_id: item.service_id,
+    pet_name: item.pet_name,
+    service_name: item.service_name,
     booking_mode: mode,
     date: isSameDay ? formatDateInput(item.start_at) : '',
     start_date: isSameDay ? '' : formatDateInput(item.start_at),
@@ -1181,16 +1268,22 @@ function handleReservationDraftChange(draft) {
 
 function buildReservationPatch(payload) {
   const resourceId = selectedResourceId.value ? Number(selectedResourceId.value) : null
-  const resource = resourceId ? getResourceById(resourceId) : null
 
   return {
-    pet_id: Number(payload.pet_id),
-    service_id: Number(payload.service_id),
     start_at: payload.start_at,
     end_at: payload.end_at,
     notes: payload.notes ?? '',
     resource_id: resourceId,
-    resource_name: resource?.name || '',
+  }
+}
+
+function mergeUpdatedReservation(updatedReservation) {
+  const previous = reservations.value.find((item) => Number(item.id) === Number(updatedReservation.id))
+
+  return {
+    ...(previous || {}),
+    ...updatedReservation,
+    daily_reports: previous?.daily_reports || updatedReservation.daily_reports || [],
   }
 }
 
@@ -1198,6 +1291,7 @@ async function handleReservationSubmit(payload) {
   isSubmitting.value = true
   actionError.value = ''
   resourceSelectionError.value = ''
+  reservationFormErrors.value = {}
 
   try {
     const service = getServiceById(payload.service_id)
@@ -1233,19 +1327,17 @@ async function handleReservationSubmit(payload) {
       return
     }
 
-    await wait()
+    const updatedReservation = reservationModalMode.value === 'review'
+      ? await confirmStaffReservation(editingReservation.value.id, patch)
+      : await updateStaffReservation(editingReservation.value.id, patch)
 
-    reservations.value = reservations.value.map((item) => {
-      if (Number(item.id) !== Number(editingReservation.value.id)) return item
+    const mergedReservation = mergeUpdatedReservation(updatedReservation)
 
-      return {
-        ...item,
-        ...patch,
-        service_name: service?.name || item.service_name,
-        status: reservationModalMode.value === 'review' ? 'confirmed' : item.status,
-        updated_at: new Date().toISOString(),
-      }
-    })
+    reservations.value = reservations.value.map((item) =>
+      Number(item.id) === Number(editingReservation.value.id)
+        ? mergedReservation
+        : item,
+    )
 
     successMessage.value =
       reservationModalMode.value === 'review'
@@ -1255,10 +1347,15 @@ async function handleReservationSubmit(payload) {
     closeReservationModal()
   } catch (error) {
     console.error(error)
-    actionError.value =
+
+    reservationFormErrors.value = getValidationErrors(error)
+
+    actionError.value = getReadableErrorMessage(
+      error,
       reservationModalMode.value === 'review'
         ? staffReservationsMessages.errors?.confirm || 'No se pudo confirmar la reserva.'
-        : staffReservationsMessages.errors?.save || 'No se pudo guardar la reserva.'
+        : staffReservationsMessages.errors?.save || 'No se pudo guardar la reserva.',
+    )
   } finally {
     isSubmitting.value = false
   }
@@ -1276,15 +1373,12 @@ async function confirmCancelReservation() {
   actionError.value = ''
 
   try {
-    await wait()
+    const cancelledReservation = await cancelStaffReservation(reservationToCancel.value.id)
+    const mergedReservation = mergeUpdatedReservation(cancelledReservation)
 
     reservations.value = reservations.value.map((item) =>
       Number(item.id) === Number(reservationToCancel.value.id)
-        ? {
-            ...item,
-            status: 'cancelled',
-            updated_at: new Date().toISOString(),
-          }
+        ? mergedReservation
         : item,
     )
 
@@ -1294,10 +1388,34 @@ async function confirmCancelReservation() {
     reservationToCancel.value = null
   } catch (error) {
     console.error(error)
-    actionError.value = staffReservationsMessages.errors?.cancel || 'No se pudo cancelar la reserva.'
+    actionError.value = getReadableErrorMessage(
+      error,
+      staffReservationsMessages.errors?.cancel || 'No se pudo cancelar la reserva.',
+    )
   } finally {
     isSubmitting.value = false
   }
+}
+
+function getStorageUrl(value) {
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
 }
 
 function getInitial(value) {

@@ -18,9 +18,9 @@
           <h3 class="text-base font-bold tracking-tight text-slate-900">
             Foto de perfil
           </h3>
+
           <p class="mt-1 text-sm leading-6 text-slate-500">
-            Puedes elegir una imagen desde tu dispositivo. Mientras no haya backend conectado,
-            la vista previa funcionará igualmente en frontend.
+            Puedes elegir una imagen desde tu dispositivo y revisar la vista previa antes de guardar.
           </p>
 
           <div class="mt-4 flex flex-wrap gap-3">
@@ -69,6 +69,7 @@
         class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
         placeholder="Ej. Kira"
       />
+
       <p v-if="getFieldError('name')" class="mt-2 text-xs font-medium text-red-600">
         {{ getFieldError('name') }}
       </p>
@@ -82,6 +83,10 @@
         class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
         placeholder="Ej. Podenco"
       />
+
+      <p v-if="getFieldError('breed')" class="mt-2 text-xs font-medium text-red-600">
+        {{ getFieldError('breed') }}
+      </p>
     </label>
 
     <div class="grid gap-4 sm:grid-cols-2">
@@ -97,6 +102,7 @@
           <option value="medium">Mediano</option>
           <option value="large">Grande</option>
         </select>
+
         <p v-if="getFieldError('size')" class="mt-2 text-xs font-medium text-red-600">
           {{ getFieldError('size') }}
         </p>
@@ -109,6 +115,10 @@
           type="date"
           class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
         />
+
+        <p v-if="getFieldError('birth_date')" class="mt-2 text-xs font-medium text-red-600">
+          {{ getFieldError('birth_date') }}
+        </p>
       </label>
     </div>
 
@@ -120,6 +130,10 @@
         class="w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
         placeholder="Ej. sensibilidad digestiva, medicación, comportamiento al llegar..."
       ></textarea>
+
+      <p v-if="getFieldError('care_notes')" class="mt-2 text-xs font-medium text-red-600">
+        {{ getFieldError('care_notes') }}
+      </p>
     </label>
 
     <div class="flex flex-wrap justify-end gap-3 pt-2">
@@ -148,7 +162,9 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { uiMessages } from '@/utils/uiMessages'
 
-const MAX_FILE_SIZE_MB = 5
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+
+const MAX_FILE_SIZE_MB = 2
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
@@ -211,6 +227,7 @@ function syncForm(data = {}) {
   localForm.birth_date = data.birth_date || ''
   localForm.care_notes = data.care_notes || ''
   localForm.photo_path = data.photo_path || ''
+
   clearPreviewOnly()
   localPhotoFile.value = null
   errors.photo = ''
@@ -221,11 +238,11 @@ watch(
   (value) => {
     syncForm(value || {})
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const previewImage = computed(() => {
-  return localPreviewUrl.value || localForm.photo_path || ''
+  return getPhotoUrl(localPreviewUrl.value || localForm.photo_path || '')
 })
 
 const avatarInitial = computed(() => {
@@ -248,10 +265,20 @@ watch(
   (value) => {
     emit('change', { ...value })
   },
-  { immediate: true, deep: true }
+  { immediate: true, deep: true },
 )
 
 function getFieldError(field) {
+  if (field === 'photo') {
+    return (
+      errors.photo ||
+      props.externalErrors?.photo ||
+      props.externalErrors?.photo_file ||
+      props.externalErrors?.photo_path ||
+      ''
+    )
+  }
+
   return errors[field] || props.externalErrors?.[field] || ''
 }
 
@@ -326,6 +353,7 @@ function handleFileChange(event) {
 function resetErrors() {
   errors.name = ''
   errors.size = ''
+  errors.photo = ''
 }
 
 function validate() {
@@ -355,7 +383,6 @@ function handleSubmit() {
 
   emit('submit', {
     name: localForm.name.trim(),
-    species: 'Perro',
     breed: localForm.breed.trim(),
     size: localForm.size,
     birth_date: localForm.birth_date || null,
@@ -364,6 +391,27 @@ function handleSubmit() {
     photo_file: localPhotoFile.value || null,
     photo_preview: previewImage.value || '',
   })
+}
+
+function getPhotoUrl(value) {
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
 }
 
 onBeforeUnmount(() => {

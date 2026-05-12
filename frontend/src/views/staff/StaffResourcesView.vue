@@ -226,485 +226,73 @@
         </section>
 
         <!-- HOTEL -->
-        <section v-if="visibleHotelResources.length" class="space-y-4">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <h2 class="text-[28px] font-bold tracking-tight text-slate-900">
-                Hotel canino
-              </h2>
-              <p class="mt-1 text-sm text-slate-500">
-                Jaulas y suites con ocupación actual, salida prevista y próxima entrada.
-              </p>
-            </div>
-
-            <span class="rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]">
-              {{ visibleHotelResources.length }} jaulas
-            </span>
-          </div>
-
-          <div class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            <article
-              v-for="resource in visibleHotelResources"
-              :key="resource.id"
-              class="rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div class="flex h-full flex-col">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="min-w-0">
-                    <h3 class="text-lg font-bold tracking-tight text-slate-900">
-                      {{ resource.name }}
-                    </h3>
-
-                    <div class="mt-3 flex flex-wrap gap-2">
-                      <span class="inline-flex items-center rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]">
-                        {{ sizeGroupLabel(resource.size_group) }}
-                      </span>
-
-                      <span
-                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                        :class="resourceStatusClass(resource.status)"
-                      >
-                        {{ resourceStatusLabel(resource.status) }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="rounded-2xl bg-[#FAF8FC] px-4 py-3 text-right">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Aforo</p>
-                    <p class="mt-1 text-lg font-bold text-slate-900">1</p>
-                  </div>
-                </div>
-
-                <div
-                  class="mt-4 rounded-[24px] border p-4"
-                  :class="currentOccupancy(resource) ? 'border-[#D8EAD6] bg-[#F6FCF5]' : 'border-[#EEE7F6] bg-[#FCFBFE]'"
-                >
-                  <template v-if="currentOccupancy(resource)">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Ahora dentro
-                    </p>
-                    <p class="mt-2 text-base font-bold text-slate-900">
-                      {{ currentOccupancy(resource).pet_name }}
-                    </p>
-                    <p class="mt-1 text-sm font-semibold text-[#6B2FA4]">
-                      {{ currentOccupancy(resource).service_name }}
-                    </p>
-                    <p class="mt-1 text-sm text-slate-500">
-                      {{ currentOccupancy(resource).client_name }}
-                    </p>
-
-                    <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Entrada</p>
-                        <p class="mt-1 text-sm font-semibold text-slate-900">
-                          {{ formatDateTime(currentOccupancy(resource).start_at) }}
-                        </p>
-                      </div>
-                      <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Salida</p>
-                        <p class="mt-1 text-sm font-semibold text-slate-900">
-                          {{ formatDateTime(currentOccupancy(resource).end_at) }}
-                        </p>
-                      </div>
-                    </div>
-
-                    <p class="mt-4 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-emerald-700">
-                      {{ stayUntilLabel(currentOccupancy(resource).end_at) }}
-                    </p>
-                  </template>
-
-                  <template v-else>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Estado actual
-                    </p>
-                    <p class="mt-2 text-base font-bold text-slate-900">
-                      Libre ahora mismo
-                    </p>
-
-                    <template v-if="nextReservation(resource)">
-                      <p class="mt-3 text-sm text-slate-500">
-                        Próxima entrada:
-                      </p>
-                      <p class="mt-1 text-sm font-semibold text-slate-900">
-                        {{ nextReservation(resource).pet_name }} · {{ formatDateTime(nextReservation(resource).start_at) }}
-                      </p>
-                    </template>
-
-                    <p v-else class="mt-3 text-sm text-slate-500">
-                      No hay ninguna entrada próxima asignada.
-                    </p>
-                  </template>
-                </div>
-
-                <div class="mt-4">
-                  <button
-                    type="button"
-                    @click="openResourceModal(resource)"
-                    class="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#D9CEE8] bg-white px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]"
-                  >
-                    {{ currentOccupancy(resource) ? 'Ver reserva actual' : 'Ver detalle' }}
-                  </button>
-                </div>
-
-                <div class="mt-auto border-t border-[#F1EBF7] pt-5">
-                  <div class="grid gap-3 sm:grid-cols-3">
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'active')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'active'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Activo
-                    </button>
-
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'cleaning')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'cleaning'
-                          ? 'border-amber-200 bg-amber-50 text-amber-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Limpieza
-                    </button>
-
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'disabled')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'disabled'
-                          ? 'border-red-200 bg-red-50 text-red-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Deshabilitar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
+        <ResourceSection
+          v-if="visibleHotelResources.length"
+          title="Hotel canino"
+          description="Jaulas y suites con ocupación actual, salida prevista y próxima entrada."
+          count-label="jaulas"
+          :resources="visibleHotelResources"
+          :is-restoring="isRestoring"
+          :updating-resource-id="updatingResourceId"
+          :current-occupancy="currentOccupancy"
+          :current-daycare-occupancy="currentDaycareOccupancy"
+          :next-reservation="nextReservation"
+          :resource-status-class="resourceStatusClass"
+          :resource-status-label="resourceStatusLabel"
+          :size-group-label="sizeGroupLabel"
+          :format-date-time="formatDateTime"
+          :format-time="formatTime"
+          :stay-until-label="stayUntilLabel"
+          zone-type="hotel"
+          @open="openResourceModal"
+          @status="setResourceStatus"
+        />
 
         <!-- GUARDERÍA -->
-        <section v-if="visibleDaycareResources.length" class="space-y-4">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <h2 class="text-[28px] font-bold tracking-tight text-slate-900">
-                Guardería
-              </h2>
-              <p class="mt-1 text-sm text-slate-500">
-                Patios con aforo actual, perros presentes ahora y próximas entradas.
-              </p>
-            </div>
-
-            <span class="rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]">
-              {{ visibleDaycareResources.length }} patios
-            </span>
-          </div>
-
-          <div class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            <article
-              v-for="resource in visibleDaycareResources"
-              :key="resource.id"
-              class="rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div class="flex h-full flex-col">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="min-w-0">
-                    <h3 class="text-lg font-bold tracking-tight text-slate-900">
-                      {{ resource.name }}
-                    </h3>
-
-                    <div class="mt-3 flex flex-wrap gap-2">
-                      <span class="inline-flex items-center rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]">
-                        {{ sizeGroupLabel(resource.size_group) }}
-                      </span>
-
-                      <span
-                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                        :class="resourceStatusClass(resource.status)"
-                      >
-                        {{ resourceStatusLabel(resource.status) }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="rounded-2xl bg-[#FAF8FC] px-4 py-3 text-right">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Aforo</p>
-                    <p class="mt-1 text-lg font-bold text-slate-900">
-                      {{ currentDaycareOccupancy(resource).length }} / {{ resource.capacity }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="mt-4 rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Ahora en el patio
-                  </p>
-
-                  <div v-if="currentDaycareOccupancy(resource).length" class="mt-3 space-y-2">
-                    <div
-                      v-for="reservation in currentDaycareOccupancy(resource).slice(0, 3)"
-                      :key="reservation.id"
-                      class="rounded-2xl border border-[#E9DDF6] bg-white px-3 py-3"
-                    >
-                      <p class="text-sm font-bold text-slate-900">
-                        {{ reservation.pet_name }}
-                      </p>
-                      <p class="mt-1 text-sm font-semibold text-[#6B2FA4]">
-                        {{ reservation.client_name }}
-                      </p>
-                      <p class="mt-1 text-xs text-slate-500">
-                        Hasta {{ formatTime(reservation.end_at) }}
-                      </p>
-                    </div>
-
-                    <div
-                      v-if="currentDaycareOccupancy(resource).length > 3"
-                      class="rounded-xl bg-[#F8F4FD] px-3 py-2 text-xs font-semibold text-[#7A59B0]"
-                    >
-                      +{{ currentDaycareOccupancy(resource).length - 3 }} más
-                    </div>
-                  </div>
-
-                  <p v-else class="mt-3 text-sm text-slate-500">
-                    No hay perros dentro ahora mismo.
-                  </p>
-                </div>
-
-                <div class="mt-4 rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Próxima entrada
-                  </p>
-
-                  <template v-if="nextReservation(resource)">
-                    <p class="mt-2 text-sm font-bold text-slate-900">
-                      {{ nextReservation(resource).pet_name }}
-                    </p>
-                    <p class="mt-1 text-sm font-semibold text-[#6B2FA4]">
-                      {{ nextReservation(resource).client_name }}
-                    </p>
-                    <p class="mt-1 text-sm text-slate-500">
-                      {{ formatDateTime(nextReservation(resource).start_at) }}
-                    </p>
-                  </template>
-
-                  <p v-else class="mt-2 text-sm text-slate-500">
-                    No hay entradas próximas asignadas.
-                  </p>
-                </div>
-
-                <div class="mt-4">
-                  <button
-                    type="button"
-                    @click="openResourceModal(resource)"
-                    class="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#D9CEE8] bg-white px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]"
-                  >
-                    Ver ocupación
-                  </button>
-                </div>
-
-                <div class="mt-auto border-t border-[#F1EBF7] pt-5">
-                  <div class="grid gap-3 sm:grid-cols-3">
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'active')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'active'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Activo
-                    </button>
-
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'cleaning')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'cleaning'
-                          ? 'border-amber-200 bg-amber-50 text-amber-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Limpieza
-                    </button>
-
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'disabled')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'disabled'
-                          ? 'border-red-200 bg-red-50 text-red-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Deshabilitar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
+        <ResourceSection
+          v-if="visibleDaycareResources.length"
+          title="Guardería"
+          description="Patios con aforo actual, perros presentes ahora y próximas entradas."
+          count-label="patios"
+          :resources="visibleDaycareResources"
+          :is-restoring="isRestoring"
+          :updating-resource-id="updatingResourceId"
+          :current-occupancy="currentOccupancy"
+          :current-daycare-occupancy="currentDaycareOccupancy"
+          :next-reservation="nextReservation"
+          :resource-status-class="resourceStatusClass"
+          :resource-status-label="resourceStatusLabel"
+          :size-group-label="sizeGroupLabel"
+          :format-date-time="formatDateTime"
+          :format-time="formatTime"
+          :stay-until-label="stayUntilLabel"
+          zone-type="daycare"
+          @open="openResourceModal"
+          @status="setResourceStatus"
+        />
 
         <!-- APOYO -->
-        <section v-if="visibleSupportResources.length" class="space-y-4">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <h2 class="text-[28px] font-bold tracking-tight text-slate-900">
-                Salas de apoyo
-              </h2>
-              <p class="mt-1 text-sm text-slate-500">
-                Recursos auxiliares del centro para adaptación o apoyo puntual.
-              </p>
-            </div>
-
-            <span class="rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]">
-              {{ visibleSupportResources.length }} salas
-            </span>
-          </div>
-
-          <div class="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-            <article
-              v-for="resource in visibleSupportResources"
-              :key="resource.id"
-              class="rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div class="flex h-full flex-col">
-                <div class="flex items-start justify-between gap-4">
-                  <div class="min-w-0">
-                    <h3 class="text-lg font-bold tracking-tight text-slate-900">
-                      {{ resource.name }}
-                    </h3>
-
-                    <div class="mt-3 flex flex-wrap gap-2">
-                      <span class="inline-flex items-center rounded-full bg-[#FAF8FC] px-3 py-1 text-xs font-semibold text-[#6E5E8A]">
-                        {{ sizeGroupLabel(resource.size_group) }}
-                      </span>
-
-                      <span
-                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                        :class="resourceStatusClass(resource.status)"
-                      >
-                        {{ resourceStatusLabel(resource.status) }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="rounded-2xl bg-[#FAF8FC] px-4 py-3 text-right">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Aforo</p>
-                    <p class="mt-1 text-lg font-bold text-slate-900">
-                      {{ resource.capacity }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="mt-4 rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
-                  <template v-if="currentOccupancy(resource)">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      En uso ahora
-                    </p>
-                    <p class="mt-2 text-sm font-bold text-slate-900">
-                      {{ currentOccupancy(resource).pet_name }}
-                    </p>
-                    <p class="mt-1 text-sm font-semibold text-[#6B2FA4]">
-                      {{ currentOccupancy(resource).service_name }}
-                    </p>
-                    <p class="mt-1 text-sm text-slate-500">
-                      Hasta {{ formatDateTime(currentOccupancy(resource).end_at) }}
-                    </p>
-                  </template>
-
-                  <template v-else>
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                      Estado actual
-                    </p>
-                    <p class="mt-2 text-sm font-bold text-slate-900">
-                      Libre ahora mismo
-                    </p>
-                    <p class="mt-1 text-sm text-slate-500">
-                      {{ nextReservation(resource) ? `Próximo uso: ${formatDateTime(nextReservation(resource).start_at)}` : 'Sin uso previsto a corto plazo.' }}
-                    </p>
-                  </template>
-                </div>
-
-                <div class="mt-4">
-                  <button
-                    type="button"
-                    @click="openResourceModal(resource)"
-                    class="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#D9CEE8] bg-white px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]"
-                  >
-                    Ver detalle
-                  </button>
-                </div>
-
-                <div class="mt-auto border-t border-[#F1EBF7] pt-5">
-                  <div class="grid gap-3 sm:grid-cols-3">
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'active')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'active'
-                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Activo
-                    </button>
-
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'cleaning')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'cleaning'
-                          ? 'border-amber-200 bg-amber-50 text-amber-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Limpieza
-                    </button>
-
-                    <button
-                      type="button"
-                      @click="setResourceStatus(resource.id, 'disabled')"
-                      :disabled="updatingResourceId === resource.id || isRestoring"
-                      class="inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                      :class="
-                        resource.status === 'disabled'
-                          ? 'border-red-200 bg-red-50 text-red-700'
-                          : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]'
-                      "
-                    >
-                      Deshabilitar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </article>
-          </div>
-        </section>
+        <ResourceSection
+          v-if="visibleSupportResources.length"
+          title="Salas de apoyo"
+          description="Recursos auxiliares del centro para adaptación o apoyo puntual."
+          count-label="salas"
+          :resources="visibleSupportResources"
+          :is-restoring="isRestoring"
+          :updating-resource-id="updatingResourceId"
+          :current-occupancy="currentOccupancy"
+          :current-daycare-occupancy="currentDaycareOccupancy"
+          :next-reservation="nextReservation"
+          :resource-status-class="resourceStatusClass"
+          :resource-status-label="resourceStatusLabel"
+          :size-group-label="sizeGroupLabel"
+          :format-date-time="formatDateTime"
+          :format-time="formatTime"
+          :stay-until-label="stayUntilLabel"
+          zone-type="support"
+          @open="openResourceModal"
+          @status="setResourceStatus"
+        />
 
         <section
           v-if="!visibleHotelResources.length && !visibleDaycareResources.length && !visibleSupportResources.length"
@@ -733,45 +321,35 @@
       </template>
     </div>
 
-    <!-- Modal detalle recurso -->
+    <!-- Modal recurso -->
     <div
       v-if="selectedResource"
       class="fixed inset-0 z-50 overflow-y-auto bg-[#2C1C43]/45 px-4 py-6 backdrop-blur-[2px]"
     >
       <div class="flex min-h-full items-start justify-center">
-        <div class="w-full max-w-3xl overflow-hidden rounded-[28px] border border-[#E8E1F1] bg-white shadow-xl">
+        <div
+          class="w-full max-w-3xl overflow-hidden rounded-[28px] border border-[#E8E1F1] bg-white shadow-xl"
+        >
           <div class="border-b border-[#F1EBF7] px-5 py-5 sm:px-6">
             <div class="flex items-start justify-between gap-4">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-wide text-[#6E4FA2]">
-                  Recurso del centro
+                  {{ resourceZoneLabel(selectedResource.zone) }}
                 </p>
+
                 <h2 class="mt-1 text-xl font-bold tracking-tight text-slate-900">
                   {{ selectedResource.name }}
                 </h2>
 
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <span class="inline-flex items-center rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]">
-                    {{ resourceZoneLabel(selectedResource.zone) }}
-                  </span>
-
-                  <span class="inline-flex items-center rounded-full bg-[#FAF8FC] px-3 py-1 text-xs font-semibold text-[#6E5E8A]">
-                    {{ sizeGroupLabel(selectedResource.size_group) }}
-                  </span>
-
-                  <span
-                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                    :class="resourceStatusClass(selectedResource.status)"
-                  >
-                    {{ resourceStatusLabel(selectedResource.status) }}
-                  </span>
-                </div>
+                <p class="mt-1 text-sm leading-6 text-slate-500">
+                  {{ resourceTypeLabel(selectedResource.type) }} · {{ sizeGroupLabel(selectedResource.size_group) }} · {{ resourceStatusLabel(selectedResource.status) }}
+                </p>
               </div>
 
               <button
                 type="button"
                 @click="closeResourceModal"
-                class="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[#D9CEE8] bg-white text-lg font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-[#E8E1F1] bg-white text-slate-500 transition hover:bg-[#FAF7FD]"
               >
                 ×
               </button>
@@ -840,6 +418,13 @@
                   <p class="mt-4 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-emerald-700">
                     {{ stayUntilLabel(selectedCurrentReservation.end_at) }}
                   </p>
+
+                  <RouterLink
+                    :to="{ name: 'staff-reservation-detail', params: { id: selectedCurrentReservation.id } }"
+                    class="mt-4 inline-flex h-10 items-center justify-center rounded-2xl bg-[#6627A3] px-4 text-sm font-semibold text-white transition hover:bg-[#57208D]"
+                  >
+                    Ver reserva
+                  </RouterLink>
                 </template>
 
                 <p v-else class="mt-2 text-sm text-slate-500">
@@ -928,11 +513,205 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { getResources, updateResourceStatus } from '@/services/resourcesService'
 import { getStaffReservations } from '@/services/staffReservationsService'
+import { getReadableErrorMessage } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
+
+const ResourceSection = defineComponent({
+  name: 'ResourceSection',
+  props: {
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    countLabel: { type: String, required: true },
+    resources: { type: Array, default: () => [] },
+    isRestoring: { type: Boolean, default: false },
+    updatingResourceId: { type: [Number, String, null], default: null },
+    currentOccupancy: { type: Function, required: true },
+    currentDaycareOccupancy: { type: Function, required: true },
+    nextReservation: { type: Function, required: true },
+    resourceStatusClass: { type: Function, required: true },
+    resourceStatusLabel: { type: Function, required: true },
+    sizeGroupLabel: { type: Function, required: true },
+    formatDateTime: { type: Function, required: true },
+    formatTime: { type: Function, required: true },
+    stayUntilLabel: { type: Function, required: true },
+    zoneType: { type: String, required: true },
+  },
+  emits: ['open', 'status'],
+  setup(props, { emit }) {
+    function statusButton(resource, status, label, activeClasses) {
+      const isActive = resource.status === status
+      return h(
+        'button',
+        {
+          type: 'button',
+          disabled: props.updatingResourceId === resource.id || props.isRestoring,
+          onClick: () => emit('status', resource.id, status),
+          class: [
+            'inline-flex h-11 items-center justify-center rounded-2xl border px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
+            isActive
+              ? activeClasses
+              : 'border-[#D9CEE8] bg-white text-[#514980] hover:bg-[#F6F1FB]',
+          ],
+        },
+        label,
+      )
+    }
+
+    function resourceCard(resource) {
+      const occupancy = props.currentOccupancy(resource)
+      const daycareOccupancy = props.currentDaycareOccupancy(resource)
+      const next = props.nextReservation(resource)
+      const isDaycare = props.zoneType === 'daycare'
+
+      return h(
+        'article',
+        {
+          key: resource.id,
+          class:
+            'rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md',
+        },
+        [
+          h('div', { class: 'flex h-full flex-col' }, [
+            h('div', { class: 'flex items-start justify-between gap-4' }, [
+              h('div', { class: 'min-w-0' }, [
+                h('h3', { class: 'text-lg font-bold tracking-tight text-slate-900' }, resource.name),
+                h('div', { class: 'mt-3 flex flex-wrap gap-2' }, [
+                  h(
+                    'span',
+                    { class: 'inline-flex items-center rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]' },
+                    props.sizeGroupLabel(resource.size_group),
+                  ),
+                  h(
+                    'span',
+                    { class: ['inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold', props.resourceStatusClass(resource.status)] },
+                    props.resourceStatusLabel(resource.status),
+                  ),
+                ]),
+              ]),
+              h('div', { class: 'rounded-2xl bg-[#FAF8FC] px-4 py-3 text-right' }, [
+                h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, 'Aforo'),
+                h(
+                  'p',
+                  { class: 'mt-1 text-lg font-bold text-slate-900' },
+                  isDaycare ? `${daycareOccupancy.length} / ${resource.capacity}` : resource.capacity,
+                ),
+              ]),
+            ]),
+
+            h(
+              'div',
+              {
+                class: [
+                  'mt-4 rounded-[24px] border p-4',
+                  occupancy ? 'border-[#D8EAD6] bg-[#F6FCF5]' : 'border-[#EEE7F6] bg-[#FCFBFE]',
+                ],
+              },
+              isDaycare
+                ? [
+                    h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, 'Ahora en el patio'),
+                    daycareOccupancy.length
+                      ? h(
+                          'div',
+                          { class: 'mt-3 space-y-2' },
+                          daycareOccupancy.slice(0, 3).map((reservation) =>
+                            h('div', { key: reservation.id, class: 'rounded-2xl border border-[#E9DDF6] bg-white px-3 py-3' }, [
+                              h('p', { class: 'text-sm font-bold text-slate-900' }, reservation.pet_name),
+                              h('p', { class: 'mt-1 text-sm font-semibold text-[#6B2FA4]' }, reservation.client_name),
+                              h('p', { class: 'mt-1 text-xs text-slate-500' }, `Hasta ${props.formatTime(reservation.end_at)}`),
+                            ]),
+                          ),
+                        )
+                      : h('p', { class: 'mt-3 text-sm text-slate-500' }, 'No hay perros dentro ahora mismo.'),
+                    daycareOccupancy.length > 3
+                      ? h('div', { class: 'mt-2 rounded-xl bg-[#F8F4FD] px-3 py-2 text-xs font-semibold text-[#7A59B0]' }, `+${daycareOccupancy.length - 3} más`)
+                      : null,
+                  ]
+                : occupancy
+                  ? [
+                      h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, props.zoneType === 'support' ? 'En uso ahora' : 'Ahora dentro'),
+                      h('p', { class: 'mt-2 text-base font-bold text-slate-900' }, occupancy.pet_name),
+                      h('p', { class: 'mt-1 text-sm font-semibold text-[#6B2FA4]' }, occupancy.service_name),
+                      h('p', { class: 'mt-1 text-sm text-slate-500' }, occupancy.client_name),
+                      h('div', { class: 'mt-4 grid gap-3 sm:grid-cols-2' }, [
+                        h('div', {}, [
+                          h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, 'Entrada'),
+                          h('p', { class: 'mt-1 text-sm font-semibold text-slate-900' }, props.formatDateTime(occupancy.start_at)),
+                        ]),
+                        h('div', {}, [
+                          h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, 'Salida'),
+                          h('p', { class: 'mt-1 text-sm font-semibold text-slate-900' }, props.formatDateTime(occupancy.end_at)),
+                        ]),
+                      ]),
+                      h('p', { class: 'mt-4 rounded-2xl bg-white px-3 py-2 text-sm font-semibold text-emerald-700' }, props.stayUntilLabel(occupancy.end_at)),
+                    ]
+                  : [
+                      h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, 'Estado actual'),
+                      h('p', { class: 'mt-2 text-base font-bold text-slate-900' }, 'Libre ahora mismo'),
+                      next
+                        ? h('p', { class: 'mt-3 text-sm text-slate-500' }, `Próxima entrada: ${next.pet_name} · ${props.formatDateTime(next.start_at)}`)
+                        : h('p', { class: 'mt-3 text-sm text-slate-500' }, 'No hay ninguna entrada próxima asignada.'),
+                    ],
+            ),
+
+            isDaycare
+              ? h('div', { class: 'mt-4 rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4' }, [
+                  h('p', { class: 'text-xs font-semibold uppercase tracking-wide text-slate-400' }, 'Próxima entrada'),
+                  next
+                    ? h('div', {}, [
+                        h('p', { class: 'mt-2 text-sm font-bold text-slate-900' }, next.pet_name),
+                        h('p', { class: 'mt-1 text-sm font-semibold text-[#6B2FA4]' }, next.client_name),
+                        h('p', { class: 'mt-1 text-sm text-slate-500' }, props.formatDateTime(next.start_at)),
+                      ])
+                    : h('p', { class: 'mt-2 text-sm text-slate-500' }, 'No hay entradas próximas asignadas.'),
+                ])
+              : null,
+
+            h('div', { class: 'mt-4' }, [
+              h(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => emit('open', resource),
+                  class:
+                    'inline-flex h-11 w-full items-center justify-center rounded-2xl border border-[#D9CEE8] bg-white px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]',
+                },
+                occupancy ? 'Ver reserva actual' : 'Ver detalle',
+              ),
+            ]),
+
+            h('div', { class: 'mt-auto border-t border-[#F1EBF7] pt-5' }, [
+              h('div', { class: 'grid gap-3 sm:grid-cols-3' }, [
+                statusButton(resource, 'active', 'Activo', 'border-emerald-200 bg-emerald-50 text-emerald-700'),
+                statusButton(resource, 'cleaning', 'Limpieza', 'border-amber-200 bg-amber-50 text-amber-700'),
+                statusButton(resource, 'disabled', 'Deshabilitar', 'border-red-200 bg-red-50 text-red-700'),
+              ]),
+            ]),
+          ]),
+        ],
+      )
+    }
+
+    return () =>
+      h('section', { class: 'space-y-4' }, [
+        h('div', { class: 'flex items-end justify-between gap-4' }, [
+          h('div', {}, [
+            h('h2', { class: 'text-[28px] font-bold tracking-tight text-slate-900' }, props.title),
+            h('p', { class: 'mt-1 text-sm text-slate-500' }, props.description),
+          ]),
+          h(
+            'span',
+            { class: 'rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#6E4FA2]' },
+            `${props.resources.length} ${props.countLabel}`,
+          ),
+        ]),
+        h('div', { class: 'grid gap-4 lg:grid-cols-2 2xl:grid-cols-3' }, props.resources.map(resourceCard)),
+      ])
+  },
+})
 
 const resourcesMessages = uiMessages.resources || {
   success: {
@@ -988,20 +767,63 @@ async function loadData() {
       getStaffReservations(),
     ])
 
-    resources.value = resourcesData
-    reservations.value = reservationsData
+    resources.value = Array.isArray(resourcesData)
+      ? resourcesData.map(normalizeResource)
+      : []
 
-    initialStatusSnapshot.value = resourcesData.map((resource) => ({
+    reservations.value = Array.isArray(reservationsData)
+      ? reservationsData.map(normalizeReservation)
+      : []
+
+    initialStatusSnapshot.value = resources.value.map((resource) => ({
       id: resource.id,
       status: resource.status,
     }))
   } catch (error) {
     console.error(error)
-    loadError.value =
-      resourcesMessages.errors?.load ||
-      'No hemos podido cargar los recursos del centro por ahora.'
+    loadError.value = getReadableErrorMessage(
+      error,
+      resourcesMessages.errors?.load || 'No hemos podido cargar los recursos del centro por ahora.',
+    )
   } finally {
     isLoading.value = false
+  }
+}
+
+function normalizeResource(resource = {}) {
+  return {
+    id: resource.id,
+    name: resource.name ?? '',
+    type: resource.type ?? 'other',
+    zone: resource.zone ?? 'support',
+    size_group: resource.size_group ?? 'all',
+    capacity: Number(resource.capacity ?? 1),
+    status: resource.status ?? 'active',
+    created_at: resource.created_at ?? null,
+    updated_at: resource.updated_at ?? null,
+  }
+}
+
+function normalizeReservation(reservation = {}) {
+  const pet = reservation.pet || null
+  const service = reservation.service || null
+  const resource = reservation.resource || null
+  const client = reservation.client || pet?.owner || null
+
+  return {
+    ...reservation,
+    id: reservation.id,
+    client_user_id: reservation.client_user_id ?? client?.id ?? pet?.owner_user_id ?? null,
+    pet_id: reservation.pet_id ?? pet?.id ?? null,
+    service_id: reservation.service_id ?? service?.id ?? null,
+    resource_id: reservation.resource_id ?? resource?.id ?? null,
+    pet_name: reservation.pet_name || pet?.name || 'Mascota',
+    client_name: reservation.client_name || client?.name || 'Cliente',
+    service_name: reservation.service_name || service?.name || 'Servicio',
+    resource_name: reservation.resource_name || resource?.name || '',
+    status: reservation.status ?? 'pending',
+    start_at: reservation.start_at ?? null,
+    end_at: reservation.end_at ?? reservation.start_at ?? null,
   }
 }
 
@@ -1053,14 +875,14 @@ const filteredResources = computed(() => {
   }
 
   if (quickFilter.value === 'free') {
-    items = items.filter((resource) => currentOccupancyCount(resource) === 0)
+    items = items.filter((resource) => currentOccupancyCount(resource) === 0 && resource.status === 'active')
   }
 
   if (quickFilter.value === 'checkouts_today') {
     items = items.filter((resource) => resourceHasCheckoutToday(resource))
   }
 
-  return items
+  return items.sort((a, b) => a.name.localeCompare(b.name, 'es'))
 })
 
 const visibleHotelResources = computed(() =>
@@ -1175,8 +997,10 @@ async function restoreStatuses() {
       'Los estados de los recursos se han restaurado.'
   } catch (error) {
     console.error(error)
-    actionError.value =
-      resourcesMessages.errors?.update || 'No se ha podido actualizar el recurso.'
+    actionError.value = getReadableErrorMessage(
+      error,
+      resourcesMessages.errors?.update || 'No se ha podido actualizar el recurso.',
+    )
   } finally {
     isRestoring.value = false
   }
@@ -1185,7 +1009,6 @@ async function restoreStatuses() {
 async function setResourceStatus(resourceId, nextStatus) {
   const current = resources.value.find((item) => Number(item.id) === Number(resourceId))
   if (!current) return
-
   if (current.status === nextStatus) return
 
   if (currentOccupancyCount(current) > 0 && nextStatus !== 'active') {
@@ -1209,15 +1032,18 @@ async function setResourceStatus(resourceId, nextStatus) {
       'El estado del recurso se ha actualizado correctamente.'
   } catch (error) {
     console.error(error)
-    actionError.value =
-      resourcesMessages.errors?.update || 'No se ha podido actualizar el recurso.'
+    actionError.value = getReadableErrorMessage(
+      error,
+      resourcesMessages.errors?.update || 'No se ha podido actualizar el recurso.',
+    )
   } finally {
     updatingResourceId.value = null
   }
 }
 
 async function refreshResources() {
-  resources.value = await getResources()
+  const data = await getResources()
+  resources.value = Array.isArray(data) ? data.map(normalizeResource) : []
 }
 
 function resourceReservations(resourceId) {
@@ -1230,7 +1056,7 @@ function currentReservations(resource) {
   const now = Date.now()
 
   return resourceReservations(resource.id).filter((reservation) => {
-    if (reservation.status === 'cancelled' || reservation.status === 'completed') return false
+    if (['cancelled', 'completed'].includes(reservation.status)) return false
 
     const start = new Date(reservation.start_at).getTime()
     const end = new Date(reservation.end_at).getTime()
@@ -1255,7 +1081,7 @@ function upcomingReservations(resource) {
   const now = Date.now()
 
   return resourceReservations(resource).filter((reservation) => {
-    if (reservation.status === 'cancelled' || reservation.status === 'completed') return false
+    if (['cancelled', 'completed'].includes(reservation.status)) return false
     return new Date(reservation.start_at).getTime() > now
   })
 }
@@ -1266,7 +1092,7 @@ function nextReservation(resource) {
 
 function checkoutTodayReservations(resource) {
   return resourceReservations(resource).filter((reservation) => {
-    if (reservation.status === 'cancelled' || reservation.status === 'completed') return false
+    if (['cancelled', 'completed'].includes(reservation.status)) return false
     return isToday(reservation.end_at)
   })
 }
@@ -1369,6 +1195,7 @@ function isToday(dateValue) {
 }
 
 function formatDate(dateValue, options = {}) {
+  if (!dateValue) return 'Sin fecha'
   return new Intl.DateTimeFormat('es-ES', options).format(new Date(dateValue))
 }
 

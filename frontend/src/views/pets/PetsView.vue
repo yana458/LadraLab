@@ -257,8 +257,8 @@
                         class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#EAE9EF] to-[#D7CBE7] text-base font-bold text-[#6B5B90]"
                       >
                         <img
-                          v-if="pet.photo_path"
-                          :src="pet.photo_path"
+                          v-if="getPetImage(pet)"
+                          :src="getPetImage(pet)"
                           :alt="pet.name"
                           class="h-full w-full object-cover"
                         />
@@ -544,11 +544,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { petsMock } from '@/mocks/petsMock'
+import { apiRequest, normalizeCollectionResponse } from '@/services/apiClient'
 import { getStaffReservations } from '@/services/staffReservationsService'
+import { getReservationDailyLogs } from '@/services/dailyLogsService'
+import { getReadableErrorMessage } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
 
 const router = useRouter()
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const staffPetsMessages = uiMessages.staffPets || {
   errors: {
@@ -580,11 +583,19 @@ async function loadData() {
   loadError.value = ''
 
   try {
-    const reservationsData = await getStaffReservations()
-    reservations.value = reservationsData
+    const [petsData, reservationsData] = await Promise.all([
+      getStaffPets(),
+      getStaffReservations(),
+    ])
 
-    pets.value = petsMock.map((pet) => {
-      const petReservations = reservationsData
+    const normalizedReservations = Array.isArray(reservationsData)
+      ? reservationsData.map(normalizeReservationForView)
+      : []
+
+    reservations.value = await attachDailyReportsToReservations(normalizedReservations)
+
+    pets.value = (Array.isArray(petsData) ? petsData : []).map((pet) => {
+      const petReservations = reservations.value
         .filter((reservation) => Number(reservation.pet_id) === Number(pet.id))
         .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
 
@@ -604,10 +615,20 @@ async function loadData() {
         todayReservation.daily_reports.some((report) => normalizeDateKey(report.report_date) === todayKey),
       )
 
-      const pendingTodayFollowUp = Boolean(todayReservation && !todayReservationHasReport)
+      const pendingTodayFollowUp = Boolean(
+        todayReservation &&
+        reservationAllowsFollowUp(todayReservation) &&
+        !todayReservationHasReport
+      )
 
       const pendingResourceReservation =
-        petReservations.find((reservation) => reservationNeedsResource(reservation) && !reservation.resource_id) || null
+        petReservations.find((reservation) => {
+          return (
+            reservationNeedsResource(reservation) &&
+            !reservation.resource_id &&
+            isTodayOrFuture(reservation.start_at)
+          )
+        }) || null
 
       return {
         ...pet,
@@ -622,11 +643,104 @@ async function loadData() {
     })
   } catch (error) {
     console.error(error)
-    loadError.value =
+    loadError.value = getReadableErrorMessage(
+      error,
       staffPetsMessages.errors?.load ||
-      'No hemos podido cargar las mascotas del centro por ahora.'
+        'No hemos podido cargar las mascotas del centro por ahora.',
+    )
   } finally {
     isLoading.value = false
+  }
+}
+
+async function getStaffPets() {
+  const data = await apiRequest('/api/staff/pets', {
+    method: 'GET',
+  })
+
+  return normalizeCollectionResponse(data).map(normalizeStaffPet)
+}
+
+async function attachDailyReportsToReservations(list = []) {
+  const mapped = await Promise.all(
+    list.map(async (reservation) => {
+      if (!reservationAllowsFollowUp(reservation)) {
+        return reservation
+      }
+
+      if (Array.isArray(reservation.daily_reports) && reservation.daily_reports.length) {
+        return reservation
+      }
+
+      try {
+        const reports = await getReservationDailyLogs(reservation.id)
+
+        return {
+          ...reservation,
+          daily_reports: Array.isArray(reports) ? reports : [],
+        }
+      } catch (error) {
+        console.warn(`No se pudieron cargar los seguimientos de la reserva ${reservation.id}`, error)
+
+        return {
+          ...reservation,
+          daily_reports: [],
+        }
+      }
+    }),
+  )
+
+  return mapped
+}
+
+function normalizeStaffPet(pet = {}) {
+  return {
+    id: pet.id,
+    owner_user_id: pet.owner_user_id ?? pet.owner?.id ?? null,
+    owner: pet.owner ?? null,
+    name: pet.name ?? '',
+    breed: pet.breed ?? '',
+    species: pet.species ?? '',
+    size: pet.size ?? '',
+    birth_date: pet.birth_date ?? null,
+    care_notes: pet.care_notes ?? '',
+    photo_path: pet.photo_path ?? '',
+    photo_url: pet.photo_url ?? '',
+    created_at: pet.created_at ?? null,
+    updated_at: pet.updated_at ?? null,
+  }
+}
+
+function normalizeReservationForView(reservation = {}) {
+  const pet = reservation.pet || null
+  const service = reservation.service || null
+  const resource = reservation.resource || null
+  const client = reservation.client || pet?.owner || null
+
+  return {
+    ...reservation,
+    id: reservation.id,
+    client_user_id: reservation.client_user_id ?? client?.id ?? pet?.owner_user_id ?? null,
+    pet_id: reservation.pet_id ?? pet?.id ?? null,
+    service_id: reservation.service_id ?? service?.id ?? null,
+    resource_id: reservation.resource_id ?? resource?.id ?? null,
+    pet,
+    service,
+    resource,
+    client,
+    pet_name: reservation.pet_name || pet?.name || 'Mascota',
+    client_name: reservation.client_name || client?.name || 'Cliente',
+    service_name: reservation.service_name || service?.name || 'Servicio',
+    resource_name: reservation.resource_name || resource?.name || '',
+    status: reservation.status ?? 'pending',
+    start_at: reservation.start_at ?? null,
+    end_at: reservation.end_at ?? reservation.start_at ?? null,
+    notes: reservation.notes ?? '',
+    daily_reports: Array.isArray(reservation.daily_reports)
+      ? reservation.daily_reports
+      : Array.isArray(reservation.dailyReports)
+        ? reservation.dailyReports
+        : [],
   }
 }
 
@@ -723,7 +837,8 @@ const filteredPets = computed(() => {
     items = items.filter((pet) => {
       return (
         pet.name?.toLowerCase().includes(query) ||
-        pet.breed?.toLowerCase().includes(query)
+        pet.breed?.toLowerCase().includes(query) ||
+        pet.owner?.name?.toLowerCase().includes(query)
       )
     })
   }
@@ -790,33 +905,60 @@ function toggleExpanded(petId) {
 
 function buildFollowUpRoute(reservationId) {
   return {
-    name: 'staff-followups',
+    path: `/staff/seguimientos/${reservationId}`,
     query: {
-      reservation: reservationId,
       date: todayKey,
     },
   }
 }
 
 function isReservationActiveToday(reservation) {
-  if (!reservation || reservation.status === 'cancelled' || reservation.status === 'completed') {
+  if (!reservation || reservation.status === 'cancelled') {
     return false
   }
 
-  const now = Date.now()
-  const start = new Date(reservation.start_at).getTime()
-  const end = new Date(reservation.end_at).getTime()
+  const todayStart = new Date(`${todayKey}T00:00:00`)
+  const todayEnd = new Date(`${todayKey}T23:59:59`)
+  const start = new Date(reservation.start_at)
+  const end = new Date(reservation.end_at || reservation.start_at)
 
-  return start <= now && end >= now
+  return start <= todayEnd && end >= todayStart
 }
 
 function reservationNeedsResource(reservation) {
-  if (!reservation || reservation.status === 'cancelled' || reservation.status === 'completed') {
+  if (!reservation || ['cancelled', 'completed'].includes(reservation.status)) {
     return false
   }
 
+  const serviceKey = getServiceKey(reservation)
+  return serviceKey === 'hotel' || serviceKey === 'daycare'
+}
+
+function reservationAllowsFollowUp(reservation) {
+  if (!reservation || !['confirmed', 'completed'].includes(reservation.status)) {
+    return false
+  }
+
+  const serviceKey = getServiceKey(reservation)
+  return serviceKey === 'hotel' || serviceKey === 'daycare'
+}
+
+function getServiceKey(reservation) {
   const bookingMode = reservation.service?.booking_mode
-  return bookingMode === 'single_day' || bookingMode === 'date_range'
+  const category = reservation.service?.category
+  const serviceName = String(reservation.service_name || reservation.service?.name || '').toLowerCase()
+
+  if (category === 'boarding' || bookingMode === 'date_range') return 'hotel'
+  if (category === 'daycare' || bookingMode === 'single_day') return 'daycare'
+
+  if (serviceName.includes('hotel') || serviceName.includes('alojamiento')) return 'hotel'
+  if (serviceName.includes('guardería') || serviceName.includes('adaptación')) return 'daycare'
+
+  return 'other'
+}
+
+function isTodayOrFuture(value) {
+  return normalizeDateKey(value) >= todayKey
 }
 
 function getDateKey(date) {
@@ -829,7 +971,16 @@ function getDateKey(date) {
 
 function normalizeDateKey(value) {
   if (!value) return ''
-  return String(value).slice(0, 10)
+
+  const rawValue = String(value)
+  const match = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
+
+  if (match) return match[1]
+
+  const date = new Date(rawValue)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return getDateKey(date)
 }
 
 function sizeLabel(size) {
@@ -838,6 +989,7 @@ function sizeLabel(size) {
     small: 'Pequeño',
     medium: 'Mediano',
     large: 'Grande',
+    giant: 'Gigante',
   }
 
   return labels[size] || 'Tamaño pendiente'
@@ -849,6 +1001,7 @@ function buildServiceTimeLabel(reservation) {
 }
 
 function formatDate(dateValue, options = {}) {
+  if (!dateValue) return 'Sin fecha'
   return new Intl.DateTimeFormat('es-ES', options).format(new Date(dateValue))
 }
 
@@ -859,6 +1012,36 @@ function formatDateTime(dateString) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function getPetImage(pet) {
+  return getStorageUrl(
+    pet?.photo_preview ||
+      pet?.photo_url ||
+      pet?.photo_path ||
+      '',
+  )
+}
+
+function getStorageUrl(value) {
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
 }
 </script>
 

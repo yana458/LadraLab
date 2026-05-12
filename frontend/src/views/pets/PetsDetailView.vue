@@ -59,12 +59,13 @@
                   class="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-[28px] border border-white/18 bg-white/12 text-3xl font-bold text-white/90 shadow-sm"
                 >
                   <img
-                    v-if="pet.photo_path"
-                    :src="pet.photo_path"
+                    v-if="getPetImage(pet)"
+                    :src="getPetImage(pet)"
                     :alt="pet.name"
                     class="h-full w-full object-cover"
+                    @error="hideBrokenImage"
                   />
-                  <span v-else>{{ pet.name.charAt(0) }}</span>
+                  <span v-else>{{ getInitial(pet.name) }}</span>
                 </div>
 
                 <div class="min-w-0 flex-1">
@@ -85,6 +86,13 @@
                       class="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20"
                     >
                       Seguimiento pendiente
+                    </span>
+
+                    <span
+                      v-else-if="todayReportState === 'draft'"
+                      class="inline-flex items-center rounded-full bg-white/14 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20"
+                    >
+                      Borrador guardado
                     </span>
                   </div>
 
@@ -266,20 +274,20 @@
 
                 <div
                   class="rounded-[24px] border p-4 shadow-sm"
-                  :class="pendingTodayFollowUp ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'"
+                  :class="followUpStateCardClass"
                 >
                   <div class="flex items-center gap-2">
                     <span
-                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl text-sm"
-                      :class="pendingTodayFollowUp ? 'bg-white text-amber-700' : 'bg-white text-emerald-700'"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-white text-sm"
+                      :class="followUpStateIconClass"
                     >
-                      {{ pendingTodayFollowUp ? '⏳' : '✓' }}
+                      {{ followUpStateIcon }}
                     </span>
                     <p class="text-sm font-bold text-slate-900">Seguimiento del día</p>
                   </div>
 
                   <p class="mt-3 text-sm font-semibold text-slate-900">
-                    {{ pendingTodayFollowUp ? 'Todavía falta registrar el informe para hoy.' : 'El seguimiento de hoy ya está registrado.' }}
+                    {{ todayReportStateLabel }}
                   </p>
 
                   <p class="mt-2 text-sm leading-7 text-slate-600">
@@ -359,7 +367,7 @@
                     </p>
                   </div>
 
-                  <div v-if="todayReport.media?.length" class="rounded-[24px] border border-[#DCE7FA] bg-gradient-to-br from-[#F8FBFF] to-[#FCFEFF] p-4 shadow-sm">
+                  <div v-if="getReportImages(todayReport).length" class="rounded-[24px] border border-[#DCE7FA] bg-gradient-to-br from-[#F8FBFF] to-[#FCFEFF] p-4 shadow-sm">
                     <div class="flex items-center gap-2">
                       <span class="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-[#EAF2FF] text-sm">📷</span>
                       <p class="text-sm font-bold text-slate-900">Fotos del día</p>
@@ -367,15 +375,16 @@
 
                     <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       <div
-                        v-for="mediaItem in todayReport.media"
-                        :key="mediaItem.id"
+                        v-for="mediaItem in getReportImages(todayReport)"
+                        :key="mediaItem.id || mediaItem.file_path || mediaItem.url"
                         class="overflow-hidden rounded-[22px] border border-[#E8E1F1] bg-white shadow-sm"
                       >
                         <div class="aspect-[4/3] bg-[#F6F2FB]">
                           <img
-                            :src="mediaItem.file_path"
+                            :src="getMediaUrl(mediaItem)"
                             alt="Foto del seguimiento"
                             class="h-full w-full object-cover"
+                            @error="hideBrokenImage"
                           />
                         </div>
                       </div>
@@ -402,7 +411,6 @@
 
           <!-- Columna lateral -->
           <aside class="space-y-6">
-
             <article class="rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm sm:p-6">
               <div class="flex items-start gap-4">
                 <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#F3ECFB] text-lg font-bold text-[#5A208E]">
@@ -446,6 +454,7 @@
                 Ver reservas asociadas
               </RouterLink>
             </article>
+
             <article class="rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm sm:p-6">
               <div class="flex items-center justify-between gap-4">
                 <div>
@@ -507,7 +516,7 @@
               <div class="mt-5 space-y-3">
                 <div
                   v-for="report in recentReports.slice(0, 4)"
-                  :key="`${report.reservation_id}-${report.id}`"
+                  :key="`${report.reservation_id}-${report.id || report.report_date}`"
                   class="rounded-2xl border border-[#EEE7F6] bg-[#FCFBFE] p-4"
                 >
                   <p class="text-sm font-bold text-slate-900">
@@ -520,16 +529,17 @@
                     {{ report.summary || 'Sin resumen visible en este informe.' }}
                   </p>
 
-                  <div v-if="report.media?.length" class="mt-3 grid grid-cols-3 gap-2">
+                  <div v-if="getReportImages(report).length" class="mt-3 grid grid-cols-3 gap-2">
                     <div
-                      v-for="mediaItem in report.media.slice(0, 3)"
-                      :key="mediaItem.id"
+                      v-for="mediaItem in getReportImages(report).slice(0, 3)"
+                      :key="mediaItem.id || mediaItem.file_path || mediaItem.url"
                       class="aspect-square overflow-hidden rounded-xl bg-[#F6F2FB]"
                     >
                       <img
-                        :src="mediaItem.file_path"
+                        :src="getMediaUrl(mediaItem)"
                         alt="Foto del informe"
                         class="h-full w-full object-cover"
+                        @error="hideBrokenImage"
                       />
                     </div>
                   </div>
@@ -553,36 +563,54 @@
           </aside>
         </section>
       </template>
+
+      <template v-else>
+        <section class="rounded-[30px] border border-[#E8E1F1] bg-white px-5 py-14 text-center shadow-sm">
+          <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#F5EFFB] text-2xl text-[#5A208E]">
+            🐾
+          </div>
+          <h1 class="mt-5 text-2xl font-bold tracking-tight text-slate-900">
+            Mascota no encontrada
+          </h1>
+          <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+            No hemos encontrado una mascota con ese identificador. Puede que no exista o que ya no esté disponible.
+          </p>
+          <RouterLink
+            :to="{ name: 'staff-pets' }"
+            class="mt-6 inline-flex h-11 items-center justify-center rounded-2xl bg-[#6627A3] px-5 text-sm font-semibold text-white transition hover:bg-[#57208D]"
+          >
+            Volver a mascotas
+          </RouterLink>
+        </section>
+      </template>
     </div>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
-import { petsMock } from '@/mocks/petsMock'
+import { RouterLink, useRoute } from 'vue-router'
+import { apiRequest, normalizeCollectionResponse } from '@/services/apiClient'
 import { getStaffReservations } from '@/services/staffReservationsService'
+import { getReservationDailyLogs } from '@/services/dailyLogsService'
+import { getReadableErrorMessage } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
 
 const props = defineProps({
   id: {
     type: [String, Number],
-    required: true,
+    required: false,
+    default: null,
   },
 })
+
+const route = useRoute()
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const staffPetDetailMessages = uiMessages.staffPetDetail || {
   errors: {
     load: 'No hemos podido cargar la ficha de la mascota por ahora.',
   },
-}
-
-const mockOwnersByUserId = {
-  1: { name: 'Ana Tutor', email: 'ana.tutor@ladralab.demo', phone: '622 104 589' },
-  2: { name: 'Laura Gómez', email: 'laura.gomez@ladralab.demo', phone: '610 845 233' },
-  3: { name: 'Marcos Peña', email: 'marcos.pena@ladralab.demo', phone: '628 450 917' },
-  4: { name: 'Sara León', email: 'sara.leon@ladralab.demo', phone: '604 733 128' },
-  5: { name: 'Iván Díaz', email: 'ivan.diaz@ladralab.demo', phone: '619 208 774' },
 }
 
 const checklistOptions = [
@@ -606,57 +634,165 @@ onMounted(async () => {
   await loadData()
 })
 
+const petId = computed(() => Number(props.id || route.params.id || 0))
+
 async function loadData() {
   isLoading.value = true
   loadError.value = ''
 
   try {
-    reservations.value = await getStaffReservations()
-    pet.value = petsMock.find((item) => Number(item.id) === Number(props.id)) || null
+    const [petsData, reservationsData] = await Promise.all([
+      getStaffPets(),
+      getStaffReservations(),
+    ])
+
+    pet.value = petsData.find((item) => Number(item.id) === Number(petId.value)) || null
 
     if (!pet.value) {
       throw new Error('Mascota no encontrada')
     }
+
+    const normalizedReservations = Array.isArray(reservationsData)
+      ? reservationsData.map(normalizeReservationForView)
+      : []
+
+    const petReservationList = normalizedReservations.filter((reservation) => {
+      return Number(reservation.pet_id) === Number(petId.value)
+    })
+
+    reservations.value = await attachDailyReportsToReservations(petReservationList)
   } catch (error) {
     console.error(error)
-    loadError.value =
+    loadError.value = getReadableErrorMessage(
+      error,
       staffPetDetailMessages.errors?.load ||
-      'No hemos podido cargar la ficha de la mascota por ahora.'
+        'No hemos podido cargar la ficha de la mascota por ahora.',
+    )
   } finally {
     isLoading.value = false
   }
 }
 
+async function getStaffPets() {
+  const data = await apiRequest('/api/staff/pets', {
+    method: 'GET',
+  })
+
+  return normalizeCollectionResponse(data).map(normalizeStaffPet)
+}
+
+async function attachDailyReportsToReservations(list = []) {
+  const mapped = await Promise.all(
+    list.map(async (reservation) => {
+      if (!reservationAllowsFollowUp(reservation)) {
+        return reservation
+      }
+
+      if (Array.isArray(reservation.daily_reports) && reservation.daily_reports.length) {
+        return reservation
+      }
+
+      try {
+        const reports = await getReservationDailyLogs(reservation.id)
+
+        return {
+          ...reservation,
+          daily_reports: Array.isArray(reports) ? reports : [],
+        }
+      } catch (error) {
+        console.warn(`No se pudieron cargar los seguimientos de la reserva ${reservation.id}`, error)
+
+        return {
+          ...reservation,
+          daily_reports: [],
+        }
+      }
+    }),
+  )
+
+  return mapped
+}
+
+function normalizeStaffPet(item = {}) {
+  return {
+    id: item.id,
+    owner_user_id: item.owner_user_id ?? item.owner?.id ?? null,
+    owner: item.owner ?? null,
+    name: item.name ?? '',
+    breed: item.breed ?? '',
+    species: item.species ?? '',
+    size: item.size ?? '',
+    birth_date: item.birth_date ?? null,
+    care_notes: item.care_notes ?? '',
+    photo_path: item.photo_path ?? '',
+    photo_url: item.photo_url ?? '',
+    created_at: item.created_at ?? null,
+    updated_at: item.updated_at ?? null,
+  }
+}
+
+function normalizeReservationForView(reservation = {}) {
+  const reservationPet = reservation.pet || null
+  const service = reservation.service || null
+  const resource = reservation.resource || null
+  const client = reservation.client || reservationPet?.owner || null
+
+  return {
+    ...reservation,
+    id: reservation.id,
+    client_user_id: reservation.client_user_id ?? client?.id ?? reservationPet?.owner_user_id ?? null,
+    pet_id: reservation.pet_id ?? reservationPet?.id ?? null,
+    service_id: reservation.service_id ?? service?.id ?? null,
+    resource_id: reservation.resource_id ?? resource?.id ?? null,
+    pet: reservationPet,
+    service,
+    resource,
+    client,
+    pet_name: reservation.pet_name || reservationPet?.name || 'Mascota',
+    client_name: reservation.client_name || client?.name || 'Cliente',
+    client_email: reservation.client_email || client?.email || '',
+    client_phone: reservation.client_phone || client?.phone || '',
+    service_name: reservation.service_name || service?.name || 'Servicio',
+    resource_name: reservation.resource_name || resource?.name || '',
+    status: reservation.status ?? 'pending',
+    start_at: reservation.start_at ?? null,
+    end_at: reservation.end_at ?? reservation.start_at ?? null,
+    notes: reservation.notes ?? '',
+    daily_reports: Array.isArray(reservation.daily_reports)
+      ? reservation.daily_reports
+      : Array.isArray(reservation.dailyReports)
+        ? reservation.dailyReports
+        : [],
+  }
+}
+
 const petReservations = computed(() => {
-  return reservations.value
-    .filter((reservation) => Number(reservation.pet_id) === Number(props.id))
+  return [...reservations.value]
+    .filter((reservation) => Number(reservation.pet_id) === Number(petId.value))
     .sort((a, b) => new Date(b.start_at).getTime() - new Date(a.start_at).getTime())
 })
-
 
 const ownerInfo = computed(() => {
   const reservationWithClient = petReservations.value.find(
     (reservation) => reservation.client_name || reservation.client_email || reservation.client_phone || reservation.client,
   )
-  const ownerId = pet.value?.owner_user_id || reservationWithClient?.client_user_id || null
-  const mockOwner = mockOwnersByUserId[ownerId] || {}
+
+  const owner = pet.value?.owner || reservationWithClient?.client || null
+  const ownerId = pet.value?.owner_user_id || reservationWithClient?.client_user_id || owner?.id || null
 
   return {
     id: ownerId,
     name:
+      owner?.name ||
       reservationWithClient?.client_name ||
-      reservationWithClient?.client?.name ||
-      mockOwner.name ||
       (ownerId ? `Cliente ${ownerId}` : 'Tutor no asignado'),
     email:
+      owner?.email ||
       reservationWithClient?.client_email ||
-      reservationWithClient?.client?.email ||
-      mockOwner.email ||
       'No disponible',
     phone:
+      owner?.phone ||
       reservationWithClient?.client_phone ||
-      reservationWithClient?.client?.phone ||
-      mockOwner.phone ||
       'No disponible',
   }
 })
@@ -675,8 +811,39 @@ const todayReport = computed(() => {
   )
 })
 
+const todayReportState = computed(() => getReportState(todayReport.value))
+
 const pendingTodayFollowUp = computed(() => {
-  return Boolean(todayReservation.value && !todayReport.value)
+  return Boolean(
+    todayReservation.value &&
+      reservationAllowsFollowUp(todayReservation.value) &&
+      !todayReport.value,
+  )
+})
+
+const todayReportStateLabel = computed(() => {
+  if (pendingTodayFollowUp.value) return 'Todavía falta registrar el informe para hoy.'
+  if (todayReportState.value === 'draft') return 'Hay un borrador guardado pendiente de publicar.'
+  if (todayReportState.value === 'completed') return 'El seguimiento de hoy ya está publicado.'
+  return 'Seguimiento registrado.'
+})
+
+const followUpStateCardClass = computed(() => {
+  if (pendingTodayFollowUp.value) return 'border-amber-200 bg-amber-50'
+  if (todayReportState.value === 'draft') return 'border-orange-200 bg-orange-50'
+  return 'border-emerald-200 bg-emerald-50'
+})
+
+const followUpStateIconClass = computed(() => {
+  if (pendingTodayFollowUp.value) return 'text-amber-700'
+  if (todayReportState.value === 'draft') return 'text-orange-700'
+  return 'text-emerald-700'
+})
+
+const followUpStateIcon = computed(() => {
+  if (pendingTodayFollowUp.value) return '⏳'
+  if (todayReportState.value === 'draft') return '…'
+  return '✓'
 })
 
 const upcomingReservations = computed(() => {
@@ -688,7 +855,7 @@ const recentReports = computed(() => {
     .flatMap((reservation) =>
       (reservation.daily_reports || []).map((report) => ({
         ...report,
-        media: Array.isArray(report.media) ? report.media : [],
+        media: normalizeReportMedia(report),
         reservation_id: reservation.id,
         service_name: reservation.service_name,
       })),
@@ -700,9 +867,8 @@ const followUpRoute = computed(() => {
   if (!todayReservation.value) return { name: 'staff-followups' }
 
   return {
-    name: 'staff-followups',
+    path: `/staff/seguimientos/${todayReservation.value.id}`,
     query: {
-      reservation: todayReservation.value.id,
       date: todayKey,
     },
   }
@@ -710,9 +876,8 @@ const followUpRoute = computed(() => {
 
 function buildReportFollowUpLink(report) {
   return {
-    name: 'staff-followups',
+    path: `/staff/seguimientos/${report.reservation_id}`,
     query: {
-      reservation: report.reservation_id,
       date: normalizeDateKey(report.report_date),
     },
   }
@@ -742,31 +907,79 @@ const summaryCards = computed(() => [
   },
   {
     label: 'Seguimiento hoy',
-    value: pendingTodayFollowUp.value ? 'Pendiente' : todayReservation.value ? 'Hecho' : '—',
-    help: pendingTodayFollowUp.value ? 'Falta completar el informe del día actual.' : todayReservation.value ? 'El informe de hoy ya está registrado.' : 'No aplica sin servicio activo.',
+    value: pendingTodayFollowUp.value ? 'Pendiente' : todayReservation.value ? stateLabel(todayReportState.value) : '—',
+    help: pendingTodayFollowUp.value
+      ? 'Falta completar el informe del día actual.'
+      : todayReservation.value
+        ? 'El seguimiento de hoy tiene estado registrado.'
+        : 'No aplica sin servicio activo.',
     icon: '04',
     iconClass: pendingTodayFollowUp.value ? 'bg-rose-50 text-rose-700' : 'bg-sky-50 text-sky-700',
   },
 ])
 
 function isReservationActiveToday(reservation) {
-  if (!reservation || reservation.status === 'cancelled' || reservation.status === 'completed') {
+  if (!reservation || ['cancelled'].includes(reservation.status)) {
     return false
   }
 
-  const now = Date.now()
-  const start = new Date(reservation.start_at).getTime()
-  const end = new Date(reservation.end_at).getTime()
+  const todayStart = new Date(`${todayKey}T00:00:00`)
+  const todayEnd = new Date(`${todayKey}T23:59:59`)
+  const start = new Date(reservation.start_at)
+  const end = new Date(reservation.end_at || reservation.start_at)
 
-  return start <= now && end >= now
+  return start <= todayEnd && end >= todayStart
 }
 
 function isFutureReservation(reservation) {
-  if (!reservation || reservation.status === 'cancelled' || reservation.status === 'completed') {
+  if (!reservation || ['cancelled', 'completed'].includes(reservation.status)) {
     return false
   }
 
   return new Date(reservation.start_at).getTime() > Date.now()
+}
+
+function reservationAllowsFollowUp(reservation) {
+  if (!reservation || !['confirmed', 'completed'].includes(reservation.status)) {
+    return false
+  }
+
+  const serviceKey = getServiceKey(reservation)
+  return serviceKey === 'hotel' || serviceKey === 'daycare'
+}
+
+function getServiceKey(reservation) {
+  const bookingMode = reservation.service?.booking_mode
+  const category = reservation.service?.category
+  const serviceName = String(reservation.service_name || reservation.service?.name || '').toLowerCase()
+
+  if (category === 'boarding' || bookingMode === 'date_range') return 'hotel'
+  if (category === 'daycare' || bookingMode === 'single_day') return 'daycare'
+
+  if (serviceName.includes('hotel') || serviceName.includes('alojamiento')) return 'hotel'
+  if (serviceName.includes('guardería') || serviceName.includes('adaptación')) return 'daycare'
+
+  return 'other'
+}
+
+function getReportState(report) {
+  const status = String(report?.status || '').toLowerCase()
+
+  if (!report) return 'pending'
+  if (status === 'draft' || report.is_draft) return 'draft'
+  if (status === 'published' || status === 'completed' || report.published_at || report.completed_at) return 'completed'
+
+  return 'draft'
+}
+
+function stateLabel(state) {
+  const labels = {
+    pending: 'Pendiente',
+    draft: 'Borrador',
+    completed: 'Hecho',
+  }
+
+  return labels[state] || 'Registrado'
 }
 
 function getInitial(value) {
@@ -779,6 +992,7 @@ function sizeLabel(size) {
     small: 'Pequeño',
     medium: 'Mediano',
     large: 'Grande',
+    giant: 'Gigante',
   }
 
   return labels[size] || 'Tamaño pendiente'
@@ -786,7 +1000,16 @@ function sizeLabel(size) {
 
 function normalizeDateKey(value) {
   if (!value) return ''
-  return String(value).slice(0, 10)
+
+  const rawValue = String(value)
+  const match = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
+
+  if (match) return match[1]
+
+  const date = new Date(rawValue)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return getDateKey(date)
 }
 
 function getDateKey(date) {
@@ -798,6 +1021,7 @@ function getDateKey(date) {
 }
 
 function formatDate(dateValue, options = {}) {
+  if (!dateValue) return 'Sin fecha'
   return new Intl.DateTimeFormat('es-ES', options).format(new Date(dateValue))
 }
 
@@ -808,6 +1032,63 @@ function formatDateTime(dateString) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function normalizeReportMedia(report = {}) {
+  const media = Array.isArray(report.media) ? report.media : []
+  const photos = Array.isArray(report.photos) ? report.photos : []
+
+  return [...media, ...photos]
+}
+
+function getReportImages(report) {
+  return normalizeReportMedia(report).filter((item) => {
+    const type = String(item?.file_type || item?.type || '').toLowerCase()
+    const path = item?.url || item?.file_url || item?.file_path || item?.path || ''
+
+    if (!path) return false
+    if (type && type !== 'image') return false
+
+    return true
+  })
+}
+
+function getPetImage(item) {
+  return getStorageUrl(
+    item?.photo_preview ||
+      item?.photo_url ||
+      item?.photo_path ||
+      '',
+  )
+}
+
+function getMediaUrl(item) {
+  return getStorageUrl(item?.url || item?.file_url || item?.file_path || item?.path || '')
+}
+
+function getStorageUrl(value) {
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
+}
+
+function hideBrokenImage(event) {
+  event.target.style.display = 'none'
 }
 </script>
 

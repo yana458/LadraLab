@@ -186,9 +186,9 @@
                     <div class="flex min-w-0 items-start gap-4">
                       <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#F2E9FA] text-lg font-bold text-[#6627A3]">
                         <img
-                          v-if="reservation.pet?.photo_path"
-                          :src="reservation.pet.photo_path"
-                          :alt="reservation.pet.name"
+                          v-if="getPetImage(reservation.pet)"
+                          :src="getPetImage(reservation.pet)"
+                          :alt="reservation.pet?.name || 'Mascota'"
                           class="h-full w-full object-cover"
                         />
                         <span v-else>{{ getInitial(reservation.pet?.name) }}</span>
@@ -212,7 +212,7 @@
                         </div>
 
                         <p class="mt-1 text-sm font-semibold text-[#6627A3]">
-                          {{ reservation.service_name || reservation.service?.name || 'Servicio' }}
+                          {{ getServiceName(reservation) }}
                         </p>
                         <p class="mt-1 text-sm text-slate-500">
                           {{ formatTime(reservation.start_at) }} → {{ formatTime(reservation.end_at) }}
@@ -296,7 +296,7 @@
                 >
                   <div class="min-w-0">
                     <p class="font-bold text-slate-950">
-                      {{ reservation.pet?.name || 'Mascota' }} · {{ reservation.service_name }}
+                      {{ reservation.pet?.name || 'Mascota' }} · {{ getServiceName(reservation) }}
                     </p>
                     <p class="mt-1 text-sm text-slate-500">
                       {{ getFollowUpStateLabel(getTodayReport(reservation)) }} · {{ formatTime(reservation.start_at) }} → {{ formatTime(reservation.end_at) }}
@@ -344,9 +344,9 @@
                 >
                   <div class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#F2E9FA] text-sm font-bold text-[#6627A3]">
                     <img
-                      v-if="reservation.pet?.photo_path"
-                      :src="reservation.pet.photo_path"
-                      :alt="reservation.pet.name"
+                      v-if="getPetImage(reservation.pet)"
+                      :src="getPetImage(reservation.pet)"
+                      :alt="reservation.pet?.name || 'Mascota'"
                       class="h-full w-full object-cover"
                     />
                     <span v-else>{{ getInitial(reservation.pet?.name) }}</span>
@@ -355,7 +355,7 @@
                   <div class="min-w-0 flex-1">
                     <p class="truncate font-bold text-slate-950">{{ reservation.pet?.name || 'Mascota' }}</p>
                     <p class="truncate text-sm text-slate-500">
-                      {{ reservation.service_name }} · {{ reservation.resource_name || 'Sin recurso' }}
+                      {{ getServiceName(reservation) }} · {{ reservation.resource_name || 'Sin recurso' }}
                     </p>
                   </div>
 
@@ -418,9 +418,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { getStaffReservations } from '@/services/staffReservationsService'
+import { getResources } from '@/services/resourcesService'
+import { getReservationDailyLogs } from '@/services/dailyLogsService'
+import { getReadableErrorMessage } from '@/utils/errorMessages'
 
-import { reservationsMock } from '@/mocks/reservationsMock'
-import { resourcesMock } from '@/mocks/resourcesMock'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const isLoading = ref(true)
 const loadError = ref('')
@@ -438,29 +441,80 @@ async function loadDashboardData() {
   loadError.value = ''
 
   try {
-    const useMocks = import.meta.env.VITE_USE_MOCKS !== 'false'
+    const [reservationsData, resourcesData] = await Promise.all([
+      getStaffReservations(),
+      getResources(),
+    ])
 
-    if (useMocks) {
-      reservations.value = reservationsMock
-      resources.value = resourcesMock
-      return
-    }
+    const baseReservations = Array.isArray(reservationsData)
+      ? reservationsData.map(normalizeReservationForDashboard)
+      : []
 
-    // Backend futuro:
-    // const [reservationsResponse, resourcesResponse] = await Promise.all([
-    //   staffDashboardService.getTodayReservations(todayKey),
-    //   staffDashboardService.getResourcesSummary(),
-    // ])
-    // reservations.value = reservationsResponse.data
-    // resources.value = resourcesResponse.data
-
-    reservations.value = reservationsMock
-    resources.value = resourcesMock
+    reservations.value = await attachDailyReportsToTodayReservations(baseReservations)
+    resources.value = Array.isArray(resourcesData) ? resourcesData : []
   } catch (error) {
     console.error(error)
-    loadError.value = 'No se ha podido cargar el dashboard de staff. Inténtalo de nuevo en unos minutos.'
+    loadError.value = getReadableErrorMessage(
+      error,
+      'No se ha podido cargar el dashboard de staff. Inténtalo de nuevo en unos minutos.',
+    )
   } finally {
     isLoading.value = false
+  }
+}
+
+async function attachDailyReportsToTodayReservations(list = []) {
+  const mapped = await Promise.all(
+    list.map(async (reservation) => {
+      if (!isReservationVisibleToday(reservation) || !isFollowUpService(reservation)) {
+        return reservation
+      }
+
+      if (Array.isArray(reservation.daily_reports) && reservation.daily_reports.length) {
+        return reservation
+      }
+
+      try {
+        const reports = await getReservationDailyLogs(reservation.id)
+
+        return {
+          ...reservation,
+          daily_reports: Array.isArray(reports) ? reports : [],
+        }
+      } catch (error) {
+        console.warn(`No se pudieron cargar los seguimientos de la reserva ${reservation.id}`, error)
+
+        return {
+          ...reservation,
+          daily_reports: [],
+        }
+      }
+    }),
+  )
+
+  return mapped
+}
+
+function normalizeReservationForDashboard(reservation = {}) {
+  const pet = reservation.pet || null
+  const service = reservation.service || null
+  const resource = reservation.resource || null
+
+  return {
+    ...reservation,
+    pet_id: reservation.pet_id ?? pet?.id ?? null,
+    service_id: reservation.service_id ?? service?.id ?? null,
+    resource_id: reservation.resource_id ?? resource?.id ?? null,
+    service_name: reservation.service_name || service?.name || 'Servicio',
+    resource_name: reservation.resource_name || resource?.name || '',
+    pet,
+    service,
+    resource,
+    daily_reports: Array.isArray(reservation.daily_reports)
+      ? reservation.daily_reports
+      : Array.isArray(reservation.dailyReports)
+        ? reservation.dailyReports
+        : [],
   }
 }
 
@@ -522,7 +576,11 @@ const missingResourceReservations = computed(() => {
 
 const activeStays = computed(() => {
   return reservations.value.filter((reservation) => {
-    return reservation.status === 'confirmed' && isFollowUpService(reservation) && isDateBetween(todayKey, reservation.start_at, reservation.end_at)
+    return (
+      reservation.status === 'confirmed' &&
+      isFollowUpService(reservation) &&
+      isDateBetween(todayKey, reservation.start_at, reservation.end_at)
+    )
   })
 })
 
@@ -707,13 +765,16 @@ function isReservationVisibleToday(reservation) {
 
 function isFollowUpService(reservation) {
   const category = reservation.service?.category
+  const bookingMode = reservation.service?.booking_mode
   const serviceName = String(reservation.service_name || reservation.service?.name || '').toLowerCase()
 
   return (
     category === 'daycare' ||
     category === 'boarding' ||
+    bookingMode === 'date_range' ||
     serviceName.includes('guardería') ||
     serviceName.includes('hotel') ||
+    serviceName.includes('alojamiento') ||
     serviceName.includes('adaptación')
   )
 }
@@ -755,6 +816,10 @@ function isTodayOrFuture(value) {
   return normalizeDateKey(value) >= todayKey
 }
 
+function getServiceName(reservation) {
+  return reservation?.service_name || reservation?.service?.name || 'Servicio'
+}
+
 function getStatusLabel(status) {
   const labels = {
     pending: 'Pendiente',
@@ -781,9 +846,49 @@ function getInitial(value) {
   return String(value || 'M').charAt(0).toUpperCase()
 }
 
+function getPetImage(pet) {
+  return getStorageUrl(
+    pet?.photo_preview ||
+      pet?.photo_url ||
+      pet?.photo_path ||
+      '',
+  )
+}
+
+function getStorageUrl(value) {
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
+}
+
 function normalizeDateKey(value) {
   if (!value) return ''
-  return String(value).slice(0, 10)
+
+  const rawValue = String(value)
+  const match = rawValue.match(/^(\d{4}-\d{2}-\d{2})/)
+
+  if (match) return match[1]
+
+  const date = new Date(rawValue)
+
+  if (Number.isNaN(date.getTime())) return ''
+
+  return toInputDate(date)
 }
 
 function toInputDate(date) {
@@ -807,10 +912,9 @@ function formatTime(value) {
 }
 </script>
 
-
 <style scoped>
 .font-ladralab-brush {
-  font-family: 'Caveat Brush', 'Brush Script MT', 'Segoe Script', cursive;
+  font-family: 'Caveat Brush', 'Brush Script MT', cursive;
   font-weight: 700;
 }
 </style>

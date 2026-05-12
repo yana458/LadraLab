@@ -755,10 +755,10 @@
             <div class="flex items-center justify-between gap-4">
               <div>
                 <h3 class="text-lg font-bold tracking-tight text-slate-900">
-                  Reservas del {{ selectedDateTitle }}
+                  Detalle del {{ selectedDateTitle }}
                 </h3>
                 <p class="mt-1 text-sm text-slate-500">
-                  Pulsa cualquier día del mes para ver aquí su detalle operativo.
+                  Selecciona un día del calendario mensual para revisar sus reservas.
                 </p>
               </div>
 
@@ -767,10 +767,10 @@
               </span>
             </div>
 
-            <div class="mt-5 grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
-              <div
+            <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <article
                 v-for="reservation in selectedDateReservations"
-                :key="`selected-month-${reservation.id}`"
+                :key="`month-detail-${reservation.id}`"
                 class="rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4"
               >
                 <div class="flex items-start justify-between gap-3">
@@ -780,9 +780,6 @@
                     </p>
                     <p class="mt-1 text-sm font-semibold text-[#6B2FA4]">
                       {{ reservation.service_name }}
-                    </p>
-                    <p class="mt-2 text-sm text-slate-500">
-                      {{ reservation.client_name }}
                     </p>
                   </div>
 
@@ -799,7 +796,7 @@
                 </p>
 
                 <p class="mt-2 text-sm text-slate-500">
-                  {{ reservation.resource_name || resourceNeededLabel(reservation) }}
+                  {{ reservation.client_name }}
                 </p>
 
                 <div class="mt-4 flex flex-wrap gap-2">
@@ -811,24 +808,14 @@
                   </RouterLink>
 
                   <button
-                    v-if="reservation.status === 'pending'"
-                    type="button"
-                    @click="openReviewModal(reservation)"
-                    class="inline-flex h-10 items-center justify-center rounded-2xl bg-[#6627A3] px-4 text-sm font-semibold text-white transition hover:bg-[#57208D]"
-                  >
-                    Revisar
-                  </button>
-
-                  <button
-                    v-else
                     type="button"
                     @click="openEditModal(reservation)"
-                    class="inline-flex h-10 items-center justify-center rounded-2xl border border-[#D9CEE8] bg-white px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]"
+                    class="inline-flex h-10 items-center justify-center rounded-2xl bg-[#6627A3] px-4 text-sm font-semibold text-white transition hover:bg-[#57208D]"
                   >
                     Editar
                   </button>
                 </div>
-              </div>
+              </article>
 
               <div
                 v-if="!selectedDateReservations.length"
@@ -1199,14 +1186,22 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ReservationForm from '@/components/reservations/ReservationForm.vue'
-import { petsMock } from '@/mocks/petsMock'
-import { reservationsMock } from '@/mocks/reservationsMock'
-import { servicesMock } from '@/mocks/servicesMock'
-import { resourcesMock } from '@/mocks/resourcesMock'
+import { apiRequest, normalizeCollectionResponse } from '@/services/apiClient'
+import {
+  getStaffReservations,
+  createStaffReservation,
+  updateStaffReservation,
+  confirmStaffReservation,
+  cancelStaffReservation,
+} from '@/services/staffReservationsService'
+import { getServices } from '@/services/servicesService'
+import { getResources } from '@/services/resourcesService'
+import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
 
 const route = useRoute()
 const router = useRouter()
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const staffReservationsMessages = uiMessages.staffReservations || {
   success: {
@@ -1223,14 +1218,6 @@ const staffReservationsMessages = uiMessages.staffReservations || {
     resourceRequired: 'Este servicio necesita un recurso compatible antes de confirmarse.',
     resourceUnavailable: 'Ese recurso ya no está disponible para esas fechas.',
   },
-}
-
-const mockClientsByUserId = {
-  1: 'Ana Tutor',
-  2: 'Laura Gómez',
-  3: 'Marcos Peña',
-  4: 'Sara León',
-  5: 'Iván Díaz',
 }
 
 const viewTabs = [
@@ -1267,7 +1254,7 @@ const services = ref([])
 const resources = ref([])
 
 const isReservationModalOpen = ref(false)
-const reservationModalMode = ref('create') // create | edit | review
+const reservationModalMode = ref('create')
 const editingReservation = ref(null)
 const reservationToCancel = ref(null)
 const expandedReservationId = ref(null)
@@ -1289,40 +1276,107 @@ async function loadStaffReservationsView() {
   successMessage.value = ''
 
   try {
-    await wait()
+    const [reservationsData, petsData, servicesData, resourcesData] = await Promise.all([
+      getStaffReservations(),
+      getStaffPets(),
+      getServices(),
+      getResources(),
+    ])
 
-    pets.value = petsMock.map((item) => ({ ...item }))
-    services.value = servicesMock.filter((item) => item.is_active !== false).map((item) => ({ ...item }))
-    resources.value = resourcesMock.map((item) => ({ ...item }))
-    reservations.value = reservationsMock.map((item) => ({ ...item }))
+    reservations.value = Array.isArray(reservationsData) ? reservationsData : []
+    pets.value = Array.isArray(petsData) ? petsData : []
+    services.value = Array.isArray(servicesData)
+      ? servicesData.filter((item) => item.is_active !== false)
+      : []
+    resources.value = Array.isArray(resourcesData) ? resourcesData : []
   } catch (error) {
     console.error(error)
-    loadError.value =
+
+    loadError.value = getReadableErrorMessage(
+      error,
       staffReservationsMessages.errors?.load ||
-      'No hemos podido cargar las reservas del centro por ahora.'
+        'No hemos podido cargar las reservas del centro por ahora.',
+    )
   } finally {
     isLoading.value = false
   }
 }
 
+async function getStaffPets() {
+  const data = await apiRequest('/api/staff/pets', {
+    method: 'GET',
+  })
+
+  return normalizeCollectionResponse(data).map(normalizeStaffPet)
+}
+
+function normalizeStaffPet(pet = {}) {
+  return {
+    id: pet.id,
+    owner_user_id: pet.owner_user_id ?? pet.owner?.id ?? null,
+    owner: pet.owner ?? null,
+    name: pet.name ?? '',
+    breed: pet.breed ?? '',
+    species: pet.species ?? '',
+    size: pet.size ?? '',
+    birth_date: pet.birth_date ?? null,
+    care_notes: pet.care_notes ?? '',
+    photo_path: pet.photo_path ?? '',
+    photo_url: pet.photo_url ?? '',
+    created_at: pet.created_at ?? null,
+    updated_at: pet.updated_at ?? null,
+  }
+}
+
 const allReservations = computed(() => {
   return reservations.value.map((reservation) => {
-    const pet = pets.value.find((item) => Number(item.id) === Number(reservation.pet_id)) || null
-    const service = services.value.find((item) => Number(item.id) === Number(reservation.service_id)) || null
-    const resource = resources.value.find((item) => Number(item.id) === Number(reservation.resource_id)) || null
+    const pet =
+      reservation.pet ||
+      pets.value.find((item) => Number(item.id) === Number(reservation.pet_id)) ||
+      null
+
+    const service =
+      reservation.service ||
+      services.value.find((item) => Number(item.id) === Number(reservation.service_id)) ||
+      null
+
+    const resource =
+      reservation.resource ||
+      resources.value.find((item) => Number(item.id) === Number(reservation.resource_id)) ||
+      null
+
+    const client = reservation.client || pet?.owner || null
 
     return {
       ...reservation,
       pet,
       service,
       resource,
+      client,
+      pet_id: reservation.pet_id ?? pet?.id ?? null,
+      service_id: reservation.service_id ?? service?.id ?? null,
+      resource_id: reservation.resource_id ?? resource?.id ?? null,
       pet_name: pet?.name || reservation.pet_name || 'Mascota',
       pet_breed: pet?.breed || '',
       pet_size: pet?.size || '',
-      pet_image: pet?.photo_path || reservation.pet_image || '',
-      client_name: mockClientsByUserId[reservation.client_user_id] || `Cliente ${reservation.client_user_id ?? ''}`,
+      pet_image: getStorageUrl(
+        pet?.photo_preview ||
+          pet?.photo_url ||
+          pet?.photo_path ||
+          reservation.pet_image ||
+          '',
+      ),
+      client_name:
+        reservation.client_name ||
+        client?.name ||
+        (reservation.client_user_id ? `Cliente ${reservation.client_user_id}` : 'Cliente'),
       service_name: reservation.service_name || service?.name || 'Servicio',
       resource_name: reservation.resource_name || resource?.name || '',
+      daily_reports: Array.isArray(reservation.daily_reports)
+        ? reservation.daily_reports
+        : Array.isArray(reservation.dailyReports)
+          ? reservation.dailyReports
+          : [],
     }
   })
 })
@@ -1630,17 +1684,22 @@ const reservationFormInitialData = computed(() => {
 
   const reservation = editingReservation.value
   const service = getServiceById(reservation.service_id)
-  const sameDay = isSameDayReservation(reservation)
+  const mode = service?.booking_mode || inferBookingMode(reservation)
+
+  const startDate = formatDateInput(reservation.start_at)
+  const endDate = formatDateInput(reservation.end_at || reservation.start_at)
 
   return {
     pet_id: reservation.pet_id,
     service_id: reservation.service_id,
     pet_name: reservation.pet_name,
     service_name: reservation.service_name,
-    booking_mode: service?.booking_mode || inferBookingMode(reservation),
-    date: sameDay ? formatDateInput(reservation.start_at) : '',
-    start_date: sameDay ? '' : formatDateInput(reservation.start_at),
-    end_date: sameDay ? '' : formatDateInput(reservation.end_at),
+    booking_mode: mode,
+
+    date: mode === 'single_day' || mode === 'time_slot' ? startDate : '',
+    start_date: mode === 'date_range' ? startDate : '',
+    end_date: mode === 'date_range' ? endDate : '',
+
     start_time: formatTimeInput(reservation.start_at),
     end_time: formatTimeInput(reservation.end_at),
     notes: reservation.notes || '',
@@ -1728,7 +1787,6 @@ const resourceHelperText = computed(() => {
   return `Mostramos recursos activos compatibles con ${modalPet.value.name} y con la zona de ${zoneLabel}.`
 })
 
-
 watch(
   () => route.query,
   () => {
@@ -1764,10 +1822,6 @@ watch(
   },
   { immediate: true },
 )
-
-function wait(ms = 160) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 function setView(view) {
   currentView.value = view
@@ -1818,21 +1872,6 @@ function movePeriod(direction) {
   }
 }
 
-
-function applyRouteFilters() {
-  const queryPet = Number(route.query.pet || 0)
-
-  if (!queryPet) {
-    petFilterId.value = null
-    return
-  }
-
-  petFilterId.value = queryPet
-  currentView.value = 'list'
-  quickFilter.value = 'all'
-  sortOrder.value = 'closest'
-}
-
 function selectDate(dateKey) {
   selectedDateKey.value = dateKey
 }
@@ -1869,6 +1908,27 @@ function getServiceById(id) {
 
 function getResourceById(id) {
   return resources.value.find((item) => Number(item.id) === Number(id)) || null
+}
+
+function getStorageUrl(value) {
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
 }
 
 function addDays(date, amount) {
@@ -1918,17 +1978,39 @@ function formatTime(dateString) {
 }
 
 function formatDateInput(dateString) {
-  const date = new Date(dateString)
+  if (!dateString) return ''
+
+  const value = String(dateString)
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/)
+
+  if (match) return match[1]
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return ''
+
   const year = date.getFullYear()
   const month = `${date.getMonth() + 1}`.padStart(2, '0')
   const day = `${date.getDate()}`.padStart(2, '0')
+
   return `${year}-${month}-${day}`
 }
 
 function formatTimeInput(dateString) {
-  const date = new Date(dateString)
+  if (!dateString) return ''
+
+  const value = String(dateString)
+  const match = value.match(/T?(\d{2}):(\d{2})/)
+
+  if (match) return `${match[1]}:${match[2]}`
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return ''
+
   const hours = `${date.getHours()}`.padStart(2, '0')
   const minutes = `${date.getMinutes()}`.padStart(2, '0')
+
   return `${hours}:${minutes}`
 }
 
@@ -2298,13 +2380,18 @@ function openCreateModal() {
 }
 
 function buildDraftFromReservation(reservation) {
+  const service = getServiceById(reservation.service_id)
+  const mode = service?.booking_mode || inferBookingMode(reservation)
+  const startDate = formatDateInput(reservation.start_at)
+  const endDate = formatDateInput(reservation.end_at || reservation.start_at)
+
   return {
     pet_id: reservation.pet_id,
     service_id: reservation.service_id,
-    booking_mode: getServiceById(reservation.service_id)?.booking_mode || inferBookingMode(reservation),
-    date: isSameDayReservation(reservation) ? formatDateInput(reservation.start_at) : '',
-    start_date: isSameDayReservation(reservation) ? '' : formatDateInput(reservation.start_at),
-    end_date: isSameDayReservation(reservation) ? '' : formatDateInput(reservation.end_at),
+    booking_mode: mode,
+    date: mode === 'single_day' || mode === 'time_slot' ? startDate : '',
+    start_date: mode === 'date_range' ? startDate : '',
+    end_date: mode === 'date_range' ? endDate : '',
     start_time: formatTimeInput(reservation.start_at),
     end_time: formatTimeInput(reservation.end_at),
     notes: reservation.notes || '',
@@ -2345,8 +2432,10 @@ function closeReservationModal() {
 function buildReservationPatch(payload) {
   const resourceId = selectedResourceId.value ? Number(selectedResourceId.value) : null
   const resource = resourceId ? getResourceById(resourceId) : null
+  const pet = getPetById(payload.pet_id)
 
   return {
+    client_user_id: pet?.owner_user_id ?? pet?.owner?.id ?? null,
     pet_id: Number(payload.pet_id),
     service_id: Number(payload.service_id),
     start_at: payload.start_at,
@@ -2361,11 +2450,15 @@ async function handleReservationSubmit(payload) {
   isSubmitting.value = true
   actionError.value = ''
   resourceSelectionError.value = ''
+  reservationFormErrors.value = {}
 
   try {
     const service = getServiceById(payload.service_id)
-    const pet = getPetById(payload.pet_id)
     const patch = buildReservationPatch(payload)
+
+    if (!patch.client_user_id) {
+      throw new Error('No se ha podido identificar al cliente de esta mascota.')
+    }
 
     if (reservationModalMode.value === 'review' && serviceNeedsResource(service)) {
       if (!patch.resource_id) {
@@ -2409,59 +2502,58 @@ async function handleReservationSubmit(payload) {
       return
     }
 
-    await wait()
-
     if (reservationModalMode.value === 'create') {
-      const now = new Date().toISOString()
+      const createdReservation = await createStaffReservation(patch)
 
-      const newReservation = {
-        id: Math.max(0, ...reservations.value.map((item) => Number(item.id))) + 1,
-        client_user_id: Number(pet?.owner_user_id || 1),
-        pet_id: Number(payload.pet_id),
-        service_id: Number(payload.service_id),
-        resource_id: patch.resource_id,
-        service_name: service?.name || 'Servicio',
-        start_at: patch.start_at,
-        end_at: patch.end_at,
-        status: 'pending',
-        resource_name: patch.resource_name,
-        notes: patch.notes,
-        created_at: now,
-        updated_at: now,
-        daily_reports: [],
-      }
-
-      reservations.value.unshift(newReservation)
+      reservations.value.unshift(createdReservation)
 
       successMessage.value =
         staffReservationsMessages.success?.created ||
         'Nueva reserva guardada. Ya queda reflejada en el panel del centro.'
-    } else if (editingReservation.value) {
-      reservations.value = reservations.value.map((item) => {
-        if (Number(item.id) !== Number(editingReservation.value.id)) return item
+    } else if (editingReservation.value && reservationModalMode.value === 'review') {
+      const confirmedReservation = await confirmStaffReservation(
+        editingReservation.value.id,
+        patch,
+      )
 
-        return {
-          ...item,
-          ...patch,
-          service_name: service?.name || item.service_name,
-          status: reservationModalMode.value === 'review' ? 'confirmed' : item.status,
-          updated_at: new Date().toISOString(),
-        }
-      })
+      reservations.value = reservations.value.map((item) =>
+        Number(item.id) === Number(editingReservation.value.id)
+          ? confirmedReservation
+          : item,
+      )
 
       successMessage.value =
-        reservationModalMode.value === 'review'
-          ? staffReservationsMessages.success?.confirmed || 'Reserva confirmada y lista para el centro.'
-          : staffReservationsMessages.success?.updated || 'La reserva se ha actualizado correctamente.'
+        staffReservationsMessages.success?.confirmed ||
+        'Reserva confirmada y lista para el centro.'
+    } else if (editingReservation.value) {
+      const updatedReservation = await updateStaffReservation(
+        editingReservation.value.id,
+        patch,
+      )
+
+      reservations.value = reservations.value.map((item) =>
+        Number(item.id) === Number(editingReservation.value.id)
+          ? updatedReservation
+          : item,
+      )
+
+      successMessage.value =
+        staffReservationsMessages.success?.updated ||
+        'La reserva se ha actualizado correctamente.'
     }
 
     closeReservationModal()
   } catch (error) {
     console.error(error)
-    actionError.value =
+
+    reservationFormErrors.value = getValidationErrors(error)
+
+    actionError.value = getReadableErrorMessage(
+      error,
       reservationModalMode.value === 'review'
         ? staffReservationsMessages.errors?.confirm || 'No se pudo confirmar la reserva.'
-        : staffReservationsMessages.errors?.save || 'No se pudo guardar la reserva.'
+        : staffReservationsMessages.errors?.save || 'No se pudo guardar la reserva.',
+    )
   } finally {
     isSubmitting.value = false
   }
@@ -2479,15 +2571,11 @@ async function confirmCancelReservation() {
   actionError.value = ''
 
   try {
-    await wait()
+    const cancelledReservation = await cancelStaffReservation(reservationToCancel.value.id)
 
     reservations.value = reservations.value.map((item) =>
       Number(item.id) === Number(reservationToCancel.value.id)
-        ? {
-            ...item,
-            status: 'cancelled',
-            updated_at: new Date().toISOString(),
-          }
+        ? cancelledReservation
         : item,
     )
 
@@ -2498,8 +2586,11 @@ async function confirmCancelReservation() {
     reservationToCancel.value = null
   } catch (error) {
     console.error(error)
-    actionError.value =
-      staffReservationsMessages.errors?.cancel || 'No se pudo cancelar la reserva.'
+
+    actionError.value = getReadableErrorMessage(
+      error,
+      staffReservationsMessages.errors?.cancel || 'No se pudo cancelar la reserva.',
+    )
   } finally {
     isSubmitting.value = false
   }

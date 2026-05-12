@@ -1,66 +1,56 @@
-// src/services/profileService.js
+// src/services/profileServices.js
 
 import { apiRequest, normalizeSingleResponse } from './apiClient'
-import { profileMock } from '@/mocks/profileMock'
 
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
-
-let mockProfileStore = clone(profileMock)
-
-function clone(data) {
-  if (typeof structuredClone === 'function') {
-    return structuredClone(data)
-  }
-
-  return JSON.parse(JSON.stringify(data))
-}
-
-function wait(ms = 250) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function normalizeProfile(profile) {
+function normalizeProfile(profile = {}) {
   return {
     id: profile.id,
     name: profile.name ?? '',
     email: profile.email ?? '',
     phone: profile.phone ?? '',
     avatar_url: profile.avatar_url ?? '',
+    role: profile.role ?? '',
+    status: profile.status ?? '',
+    is_active: profile.is_active ?? true,
     created_at: profile.created_at ?? null,
     updated_at: profile.updated_at ?? null,
   }
 }
 
-export async function getMyProfile() {
-  if (USE_MOCKS) {
-    await wait()
-    return normalizeProfile(mockProfileStore)
-  }
+function extractUser(data) {
+  const responseData = normalizeSingleResponse(data)
 
-  const data = await apiRequest('/api/profile', {
+  return responseData?.user || responseData
+}
+
+export async function getMyProfile() {
+  const data = await apiRequest('/api/auth/me', {
     method: 'GET',
   })
 
-  return normalizeProfile(normalizeSingleResponse(data))
+  return normalizeProfile(extractUser(data))
 }
 
 export async function updateMyProfile(payload) {
-  if (USE_MOCKS) {
-    await wait()
-
-    mockProfileStore = {
-      ...mockProfileStore,
-      ...payload,
-      updated_at: new Date().toISOString(),
-    }
-
-    return normalizeProfile(mockProfileStore)
-  }
-
-  const data = await apiRequest('/api/profile', {
+  const data = await apiRequest('/api/auth/profile', {
     method: 'PATCH',
-    body: payload,
+    body: {
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone ?? '',
+    },
   })
 
-  return normalizeProfile(normalizeSingleResponse(data))
+  return normalizeProfile(extractUser(data))
+}
+
+export async function updateMyPassword(payload) {
+  return apiRequest('/api/auth/profile/password', {
+    method: 'PATCH',
+    body: {
+      current_password: payload.current_password,
+      password: payload.password,
+      password_confirmation: payload.password_confirmation,
+    },
+  })
 }

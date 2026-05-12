@@ -10,21 +10,49 @@
       </div>
 
       <div
-        v-if="actionError"
+        v-if="loadError || actionError"
         class="pointer-events-auto flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-lg"
       >
         <span class="mt-0.5 text-base">⚠️</span>
-        <p>{{ actionError }}</p>
+        <p>{{ loadError || actionError }}</p>
       </div>
     </div>
 
     <div class="mx-auto max-w-7xl space-y-6">
-      <template v-if="!selectedUser">
+      <template v-if="isLoading">
+        <section
+          class="overflow-hidden rounded-[30px] border border-[#E7E0F1] bg-gradient-to-r from-[#5A208E] via-[#7A2EA6] to-[#E02890] p-6 text-white shadow-[0_24px_70px_-30px_rgba(90,32,142,0.58)]"
+        >
+          <div class="animate-pulse">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div class="flex min-w-0 max-w-4xl gap-5">
+                <div class="h-28 w-28 rounded-[32px] bg-white/20"></div>
+                <div class="min-w-0 flex-1">
+                  <div class="h-12 w-72 rounded bg-white/20"></div>
+                  <div class="mt-4 h-5 w-80 rounded bg-white/15"></div>
+                  <div class="mt-4 h-5 w-full max-w-2xl rounded bg-white/15"></div>
+                </div>
+              </div>
+
+              <div class="grid gap-3 sm:grid-cols-2 lg:w-[360px]">
+                <div class="h-11 rounded-2xl bg-white/20"></div>
+                <div class="h-11 rounded-2xl bg-white/20"></div>
+              </div>
+            </div>
+
+            <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div v-for="n in 3" :key="n" class="h-[132px] rounded-[24px] bg-white/15"></div>
+            </div>
+          </div>
+        </section>
+      </template>
+
+      <template v-else-if="!selectedUser">
         <section class="rounded-[30px] border border-[#E8E1F1] bg-white p-8 text-center shadow-sm">
           <p class="text-sm font-semibold uppercase tracking-[0.22em] text-[#9A88B5]">Usuario no encontrado</p>
           <h1 class="mt-3 text-3xl font-bold tracking-tight text-slate-900">No hemos encontrado esta cuenta</h1>
           <p class="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
-            Puede que el usuario no exista en los datos actuales o que todavía no se haya cargado correctamente.
+            Puede que el usuario no exista o que no esté disponible en este momento.
           </p>
 
           <RouterLink
@@ -176,6 +204,9 @@
                       class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
                       placeholder="Teléfono de contacto"
                     />
+                    <p v-if="formErrors.phone" class="mt-2 text-xs font-medium text-red-600">
+                      {{ formErrors.phone }}
+                    </p>
                   </label>
 
                   <label class="block">
@@ -188,6 +219,9 @@
                         {{ role.label }}
                       </option>
                     </select>
+                    <p v-if="formErrors.role" class="mt-2 text-xs font-medium text-red-600">
+                      {{ formErrors.role }}
+                    </p>
                   </label>
                 </div>
 
@@ -212,6 +246,10 @@
                       </span>
                     </label>
                   </div>
+
+                  <p v-if="formErrors.is_active" class="mt-3 text-xs font-medium text-red-600">
+                    {{ formErrors.is_active }}
+                  </p>
 
                   <p v-if="isCurrentAdmin" class="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
                     Esta cuenta corresponde al administrador actual. No puede desactivarse desde aquí.
@@ -257,17 +295,17 @@
                     class="inline-flex h-11 items-center justify-center rounded-2xl border border-[#D9CEE8] px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB] disabled:cursor-not-allowed disabled:opacity-60"
                     :disabled="isSaving"
                   >
-                    Restaurar datos
+                    Descartar cambios
                   </button>
 
                   <button
                     type="button"
                     @click="toggleActive"
                     class="inline-flex h-11 items-center justify-center rounded-2xl px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                    :class="form.is_active ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
+                    :class="selectedUser.is_active ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'"
                     :disabled="isSaving || isCurrentAdmin"
                   >
-                    {{ form.is_active ? 'Desactivar cuenta' : 'Activar cuenta' }}
+                    {{ selectedUser.is_active ? 'Desactivar cuenta' : 'Activar cuenta' }}
                   </button>
 
                   <button
@@ -332,7 +370,7 @@
                 <div>
                   <h2 class="text-xl font-bold tracking-tight text-slate-900">Seguridad</h2>
                   <p class="mt-1 text-sm leading-6 text-slate-500">
-                    Acciones útiles para recuperar o proteger el acceso del usuario.
+                    Cambia la contraseña temporal del usuario o revisa su último acceso.
                   </p>
                 </div>
                 <span class="inline-flex w-fit items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
@@ -341,27 +379,56 @@
               </div>
 
               <div class="mt-5 grid flex-1 gap-4 lg:grid-cols-2">
-                <div class="rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
-                  <p class="text-sm font-bold text-slate-900">Reinicio de contraseña</p>
+                <form
+                  class="rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4"
+                  @submit.prevent="saveTemporaryPassword"
+                >
+                  <p class="text-sm font-bold text-slate-900">Cambiar contraseña temporal</p>
                   <p class="mt-2 text-sm leading-6 text-slate-500">
-                    Envía al usuario un enlace para recuperar el acceso a su cuenta.
+                    Define una contraseña nueva para que el usuario pueda volver a entrar. No se mostrará después de guardarla.
                   </p>
+
+                  <label class="mt-4 block">
+                    <span class="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Nueva contraseña</span>
+                    <input
+                      v-model="passwordForm.password"
+                      type="password"
+                      autocomplete="new-password"
+                      class="h-11 w-full rounded-2xl border border-[#DCCFEA] bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
+                      placeholder="Mínimo 8 caracteres"
+                    />
+                    <p v-if="passwordErrors.password" class="mt-2 text-xs font-medium text-red-600">
+                      {{ passwordErrors.password }}
+                    </p>
+                  </label>
+
+                  <label class="mt-3 block">
+                    <span class="mb-2 block text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Confirmar contraseña</span>
+                    <input
+                      v-model="passwordForm.password_confirmation"
+                      type="password"
+                      autocomplete="new-password"
+                      class="h-11 w-full rounded-2xl border border-[#DCCFEA] bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
+                      placeholder="Repite la contraseña"
+                    />
+                    <p v-if="passwordErrors.password_confirmation" class="mt-2 text-xs font-medium text-red-600">
+                      {{ passwordErrors.password_confirmation }}
+                    </p>
+                  </label>
+
                   <button
-                    type="button"
-                    @click="sendPasswordReset"
-                    class="mt-4 inline-flex h-10 items-center justify-center rounded-2xl border border-[#D9CEE8] bg-white px-4 text-sm font-semibold text-[#5A208E] transition hover:bg-[#F6F1FB]"
+                    type="submit"
+                    :disabled="isPasswordSaving"
+                    class="mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl bg-[#5A208E] px-4 text-sm font-semibold text-white transition hover:bg-[#4B1A77] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Enviar recuperación
+                    {{ isPasswordSaving ? 'Guardando...' : 'Guardar contraseña' }}
                   </button>
-                </div>
+                </form>
 
                 <div class="rounded-[24px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
                   <p class="text-sm font-bold text-slate-900">Último acceso</p>
                   <p class="mt-2 text-sm leading-6 text-slate-500">
-                    {{ selectedUser.last_login_at ? `Última entrada registrada el ${selectedUser.last_login_at}.` : 'Todavía no hay accesos registrados.' }}
-                  </p>
-                  <p class="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                    Solo lectura
+                    {{ selectedUser.last_login_at ? `Última entrada registrada: ${formatDate(selectedUser.last_login_at)}` : 'Todavía no hay accesos registrados.' }}
                   </p>
                 </div>
               </div>
@@ -395,116 +462,253 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
+import {
+  apiRequest,
+  normalizeCollectionResponse,
+  normalizeSingleResponse,
+} from '@/services/apiClient'
+import { getStaffReservations } from '@/services/staffReservationsService'
+import { getReservationDailyLogs } from '@/services/dailyLogsService'
+import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 
 const route = useRoute()
 
-const currentAdminId = 1
+const isLoading = ref(true)
 const isSaving = ref(false)
+const isPasswordSaving = ref(false)
 const successMessage = ref('')
 const actionError = ref('')
+const loadError = ref('')
 
-const users = ref([
-  {
-    id: 1,
-    name: 'Sergio Ramos',
-    email: 'admin@ladralab.test',
-    phone: '600 100 200',
-    role: 'admin',
-    is_active: true,
-    last_login_at: '28 abr, 09:10',
-    created_at: '10 abr, 10:00',
-    pets_count: 0,
-    reservations_count: 18,
-    followups_count: 12,
-    reports_count: 5,
-  },
-  {
-    id: 2,
-    name: 'Marta Suárez',
-    email: 'marta.staff@ladralab.test',
-    phone: '600 222 333',
-    role: 'staff',
-    is_active: true,
-    last_login_at: '27 abr, 08:20',
-    created_at: '12 abr, 11:30',
-    pets_count: 0,
-    reservations_count: 9,
-    followups_count: 18,
-    reports_count: 18,
-  },
-  {
-    id: 3,
-    name: 'Sara León',
-    email: 'sara@ladralab.test',
-    phone: '600 333 444',
-    role: 'cliente',
-    is_active: true,
-    last_login_at: '27 abr, 13:08',
-    created_at: '16 abr, 09:15',
-    pets_count: 2,
-    reservations_count: 5,
-    followups_count: 3,
-    reports_count: 0,
-  },
-  {
-    id: 4,
-    name: 'Ana Martín',
-    email: 'ana@ladralab.test',
-    phone: '600 444 555',
-    role: 'cliente',
-    is_active: true,
-    last_login_at: '28 abr, 09:45',
-    created_at: '18 abr, 17:20',
-    pets_count: 4,
-    reservations_count: 5,
-    followups_count: 2,
-    reports_count: 0,
-  },
-  {
-    id: 5,
-    name: 'Luis Peña',
-    email: 'luis.staff@ladralab.test',
-    phone: '600 555 666',
-    role: 'staff',
-    is_active: false,
-    last_login_at: '14 mar, 11:30',
-    created_at: '01 mar, 08:40',
-    pets_count: 0,
-    reservations_count: 2,
-    followups_count: 8,
-    reports_count: 8,
-  },
-])
+const selectedUser = ref(null)
+const currentUser = ref(null)
+const pets = ref([])
+const reservations = ref([])
+const reports = ref([])
 
 const form = reactive({
   name: '',
   email: '',
   phone: '',
-  role: 'cliente',
+  role: 'client',
   is_active: true,
 })
 
-const formErrors = reactive({
-  name: '',
-  email: '',
+const passwordForm = reactive({
+  password: '',
+  password_confirmation: '',
 })
+
+const formErrors = reactive({})
+const passwordErrors = reactive({})
 
 const roleOptions = [
   { value: 'admin', label: 'Admin' },
   { value: 'staff', label: 'Staff' },
-  { value: 'cliente', label: 'Cliente' },
+  { value: 'client', label: 'Cliente' },
 ]
 
-const selectedUser = computed(() => {
-  const id = Number(route.params.id)
-  return users.value.find((user) => Number(user.id) === id) || null
+const userId = computed(() => Number(route.params.id || 0))
+
+onMounted(async () => {
+  await loadUserDetail()
 })
 
-const isCurrentAdmin = computed(() => Number(selectedUser.value?.id) === currentAdminId)
+watch(
+  selectedUser,
+  (user) => {
+    if (!user) return
+    applyUserToForm(user)
+  },
+)
+
+async function loadUserDetail() {
+  isLoading.value = true
+  loadError.value = ''
+  actionError.value = ''
+  successMessage.value = ''
+
+  try {
+    const [userData, petsData, reservationsData] = await Promise.all([
+      getAdminUserById(userId.value),
+      getStaffPets(),
+      getStaffReservations(),
+    ])
+
+    selectedUser.value = userData
+    pets.value = Array.isArray(petsData) ? petsData : []
+    reservations.value = Array.isArray(reservationsData)
+      ? reservationsData.map(normalizeReservationForView)
+      : []
+
+    try {
+      currentUser.value = await getCurrentUser()
+    } catch (error) {
+      console.warn('No se pudo cargar el usuario autenticado.', error)
+      currentUser.value = null
+    }
+
+    reports.value = await loadReportsForUser(userData)
+  } catch (error) {
+    console.error(error)
+    selectedUser.value = null
+    loadError.value = getReadableErrorMessage(
+      error,
+      'No hemos podido cargar el detalle del usuario por ahora.',
+    )
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function getCurrentUser() {
+  const data = await apiRequest('/api/auth/me', {
+    method: 'GET',
+  })
+
+  return normalizeUser(normalizeSingleResponse(data))
+}
+
+async function getAdminUserById(id) {
+  const data = await apiRequest(`/api/admin/users/${id}`, {
+    method: 'GET',
+  })
+
+  return normalizeUser(normalizeSingleResponse(data))
+}
+
+async function updateAdminUser(id, payload) {
+  const data = await apiRequest(`/api/admin/users/${id}`, {
+    method: 'PATCH',
+    body: payload,
+  })
+
+  return normalizeUser(normalizeSingleResponse(data))
+}
+
+async function updateAdminUserPassword(id, payload) {
+  return apiRequest(`/api/admin/users/${id}/password`, {
+    method: 'PATCH',
+    body: payload,
+  })
+}
+
+async function getStaffPets() {
+  const data = await apiRequest('/api/staff/pets', {
+    method: 'GET',
+  })
+
+  return normalizeCollectionResponse(data).map(normalizeStaffPet)
+}
+
+async function loadReportsForUser(user) {
+  if (!user || user.role !== 'client') return []
+
+  const userReservations = reservations.value.filter((reservation) => {
+    return Number(reservation.client_user_id) === Number(user.id)
+  })
+
+  const mapped = await Promise.all(
+    userReservations.map(async (reservation) => {
+      try {
+        const reservationReports = await getReservationDailyLogs(reservation.id)
+
+        return Array.isArray(reservationReports)
+          ? reservationReports.map((report) => ({
+              ...report,
+              reservation_id: reservation.id,
+              service_name: reservation.service_name,
+            }))
+          : []
+      } catch (error) {
+        console.warn(`No se pudieron cargar los seguimientos de la reserva ${reservation.id}`, error)
+        return []
+      }
+    }),
+  )
+
+  return mapped.flat()
+}
+
+function normalizeUser(user = {}) {
+  const role = normalizeRole(user.role)
+  const isActive = Boolean(user.is_active ?? user.status === 'active')
+
+  return {
+    id: user.id,
+    name: user.name ?? '',
+    email: user.email ?? '',
+    phone: user.phone ?? '',
+    role,
+    is_active: isActive,
+    status: isActive ? 'active' : 'inactive',
+    last_login_at: user.last_login_at ?? null,
+    created_at: user.created_at ?? null,
+    updated_at: user.updated_at ?? null,
+  }
+}
+
+function normalizeRole(role) {
+  if (role === 'cliente') return 'client'
+  return role || 'client'
+}
+
+function normalizeStaffPet(pet = {}) {
+  return {
+    id: pet.id,
+    owner_user_id: pet.owner_user_id ?? pet.owner?.id ?? null,
+    owner: pet.owner ?? null,
+    name: pet.name ?? '',
+    breed: pet.breed ?? '',
+    size: pet.size ?? '',
+    care_notes: pet.care_notes ?? '',
+  }
+}
+
+function normalizeReservationForView(reservation = {}) {
+  const pet = reservation.pet || null
+  const service = reservation.service || null
+  const resource = reservation.resource || null
+  const client = reservation.client || pet?.owner || null
+
+  return {
+    ...reservation,
+    id: reservation.id,
+    client_user_id: reservation.client_user_id ?? client?.id ?? pet?.owner_user_id ?? null,
+    pet_id: reservation.pet_id ?? pet?.id ?? null,
+    service_id: reservation.service_id ?? service?.id ?? null,
+    resource_id: reservation.resource_id ?? resource?.id ?? null,
+    pet,
+    service,
+    resource,
+    client,
+    pet_name: reservation.pet_name || pet?.name || 'Mascota',
+    client_name: reservation.client_name || client?.name || 'Cliente',
+    service_name: reservation.service_name || service?.name || 'Servicio',
+    resource_name: reservation.resource_name || resource?.name || '',
+    status: reservation.status ?? 'pending',
+    start_at: reservation.start_at ?? null,
+    end_at: reservation.end_at ?? reservation.start_at ?? null,
+  }
+}
+
+const isCurrentAdmin = computed(() => {
+  return Boolean(currentUser.value?.id && selectedUser.value?.id && Number(currentUser.value.id) === Number(selectedUser.value.id))
+})
 
 const avatarInitial = computed(() => (selectedUser.value?.name || 'U').charAt(0).toUpperCase())
+
+const userPets = computed(() => {
+  if (!selectedUser.value) return []
+  return pets.value.filter((pet) => Number(pet.owner_user_id) === Number(selectedUser.value.id))
+})
+
+const userReservations = computed(() => {
+  if (!selectedUser.value) return []
+  return reservations.value.filter((reservation) => Number(reservation.client_user_id) === Number(selectedUser.value.id))
+})
 
 const heroCards = computed(() => [
   {
@@ -519,12 +723,12 @@ const heroCards = computed(() => [
     value: selectedUser.value?.is_active ? 'Activo' : 'Inactivo',
     help: selectedUser.value?.is_active ? 'Puede iniciar sesión.' : 'Acceso bloqueado.',
     icon: '02',
-    iconClass: 'bg-emerald-100 text-emerald-700',
+    iconClass: selectedUser.value?.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600',
   },
   {
     label: 'Último acceso',
     value: selectedUser.value?.last_login_at ? 'Registrado' : 'Sin acceso',
-    help: selectedUser.value?.last_login_at || 'Sin entradas todavía.',
+    help: selectedUser.value?.last_login_at ? formatDate(selectedUser.value.last_login_at) : 'Sin entradas todavía.',
     icon: '03',
     iconClass: 'bg-amber-50 text-amber-700',
   },
@@ -538,12 +742,12 @@ const accountActivityCards = computed(() => {
   return [
     {
       label: 'Alta',
-      value: user.created_at || 'Sin fecha',
+      value: formatDate(user.created_at),
       help: 'Fecha de creación de la cuenta.',
     },
     {
       label: 'Último acceso',
-      value: user.last_login_at || 'Sin acceso',
+      value: user.last_login_at ? formatDate(user.last_login_at) : 'Sin acceso',
       help: user.last_login_at ? 'Entrada registrada en el sistema.' : 'Todavía no ha iniciado sesión.',
     },
     {
@@ -559,20 +763,20 @@ const relatedCards = computed(() => {
 
   if (!user) return []
 
-  if (form.role === 'cliente') {
+  if (user.role === 'client') {
     return [
-      { label: 'Mascotas', value: user.pets_count ?? 0, help: 'Fichas asociadas.' },
-      { label: 'Reservas', value: user.reservations_count ?? 0, help: 'Historial y próximas.' },
-      { label: 'Seguimientos', value: user.followups_count ?? 0, help: 'Informes visibles.' },
-      { label: 'Accesos', value: user.last_login_at ? 'Sí' : 'No', help: 'Actividad registrada.' },
+      { label: 'Mascotas', value: userPets.value.length, help: 'Fichas asociadas como tutor.' },
+      { label: 'Reservas', value: userReservations.value.length, help: 'Historial y próximas reservas.' },
+      { label: 'Seguimientos', value: reports.value.length, help: 'Informes asociados a sus reservas.' },
+      { label: 'Acceso', value: user.last_login_at ? 'Sí' : 'No', help: 'Actividad registrada en la cuenta.' },
     ]
   }
 
   return [
-    { label: 'Reservas', value: user.reservations_count ?? 0, help: 'Gestiones vinculadas.' },
-    { label: 'Seguimientos', value: user.followups_count ?? 0, help: 'Informes revisados.' },
-    { label: 'Informes', value: user.reports_count ?? 0, help: 'Actividad del equipo.' },
-    { label: 'Accesos', value: user.last_login_at ? 'Sí' : 'No', help: 'Actividad registrada.' },
+    { label: 'Rol', value: formatRole(user.role), help: 'Permisos según perfil asignado.' },
+    { label: 'Estado', value: user.is_active ? 'Activo' : 'Inactivo', help: 'Disponibilidad de acceso al sistema.' },
+    { label: 'Alta', value: user.created_at ? 'Sí' : '—', help: formatDate(user.created_at) },
+    { label: 'Acceso', value: user.last_login_at ? 'Sí' : 'No', help: user.last_login_at ? formatDate(user.last_login_at) : 'Sin entrada registrada.' },
   ]
 })
 
@@ -580,7 +784,7 @@ const roleDescription = computed(() => {
   const descriptions = {
     admin: 'Puede gestionar usuarios, reservas, mascotas, recursos y revisar la actividad general del centro.',
     staff: 'Puede trabajar con reservas, mascotas, recursos y seguimientos diarios del centro.',
-    cliente: 'Puede consultar sus mascotas, reservas y seguimientos publicados por el centro.',
+    client: 'Puede consultar sus mascotas, reservas y seguimientos publicados por el centro.',
   }
 
   return descriptions[form.role] || 'Rol pendiente de definir.'
@@ -589,135 +793,175 @@ const roleDescription = computed(() => {
 const rolePermissions = computed(() => {
   const permissions = {
     admin: ['Gestionar usuarios', 'Revisar reservas del centro', 'Gestionar recursos', 'Consultar seguimientos'],
-    staff: ['Consultar reservas asignadas', 'Registrar seguimientos diarios', 'Revisar fichas de mascotas', 'Actualizar recursos operativos'],
-    cliente: ['Consultar sus mascotas', 'Crear y revisar reservas', 'Ver seguimientos publicados', 'Actualizar sus datos básicos'],
+    staff: ['Consultar reservas del centro', 'Registrar seguimientos diarios', 'Revisar fichas de mascotas', 'Actualizar recursos operativos'],
+    client: ['Consultar sus mascotas', 'Crear y revisar reservas', 'Ver seguimientos publicados', 'Actualizar sus datos básicos'],
   }
 
   return permissions[form.role] || []
 })
 
-watch(
-  selectedUser,
-  (user) => {
-    if (!user) return
-    applyUserToForm(user)
-  },
-  { immediate: true },
-)
-
 function applyUserToForm(user) {
   form.name = user.name || ''
   form.email = user.email || ''
   form.phone = user.phone || ''
-  form.role = user.role || 'cliente'
-  form.is_active = user.is_active ?? true
+  form.role = normalizeRole(user.role)
+  form.is_active = Boolean(user.is_active)
 }
 
 function clearMessages() {
   successMessage.value = ''
   actionError.value = ''
+  loadError.value = ''
 }
 
-function resetErrors() {
-  formErrors.name = ''
-  formErrors.email = ''
+function clearFormErrors() {
+  Object.keys(formErrors).forEach((key) => {
+    delete formErrors[key]
+  })
 }
 
-function validateForm() {
-  resetErrors()
+function clearPasswordErrors() {
+  Object.keys(passwordErrors).forEach((key) => {
+    delete passwordErrors[key]
+  })
+}
 
-  let isValid = true
+function assignFormErrors(errors = {}) {
+  clearFormErrors()
 
-  if (!form.name.trim()) {
-    formErrors.name = 'Indica el nombre del usuario.'
-    isValid = false
-  }
+  Object.entries(errors).forEach(([key, value]) => {
+    formErrors[key] = Array.isArray(value) ? value[0] : value
+  })
+}
 
-  if (!form.email.trim()) {
-    formErrors.email = 'Indica el email del usuario.'
-    isValid = false
-  } else {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(form.email.trim())) {
-      formErrors.email = 'Introduce un email válido.'
-      isValid = false
-    }
-  }
+function assignPasswordErrors(errors = {}) {
+  clearPasswordErrors()
 
-  return isValid
+  Object.entries(errors).forEach(([key, value]) => {
+    passwordErrors[key] = Array.isArray(value) ? value[0] : value
+  })
+}
+
+function resetPasswordForm() {
+  passwordForm.password = ''
+  passwordForm.password_confirmation = ''
+  clearPasswordErrors()
 }
 
 function resetForm() {
   clearMessages()
-  resetErrors()
+  clearFormErrors()
 
   if (selectedUser.value) {
     applyUserToForm(selectedUser.value)
   }
 }
 
+function buildUpdatePayload() {
+  return {
+    name: form.name.trim(),
+    email: form.email.trim(),
+    phone: form.phone?.trim() || null,
+    role: form.role,
+    is_active: Boolean(form.is_active),
+  }
+}
+
 async function saveUser() {
-  if (!selectedUser.value || !validateForm()) return
+  if (!selectedUser.value) return
 
   isSaving.value = true
   clearMessages()
+  clearFormErrors()
 
   try {
     if (isCurrentAdmin.value && form.is_active === false) {
       throw new Error('No puedes desactivar tu propia cuenta.')
     }
 
-    const payload = {
-      name: form.name.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      role: form.role,
-      is_active: form.is_active,
-    }
+    const updatedUser = await updateAdminUser(selectedUser.value.id, buildUpdatePayload())
 
-    // TODO backend:
-    // await adminUsersService.updateUser(selectedUser.value.id, payload)
-    // PATCH /api/admin/users/{user}
-
-    users.value = users.value.map((user) =>
-      Number(user.id) === Number(selectedUser.value.id)
-        ? { ...user, ...payload }
-        : user,
-    )
-
+    selectedUser.value = updatedUser
     successMessage.value = 'Los datos del usuario se han guardado correctamente.'
   } catch (error) {
-    actionError.value = error?.message || 'No se pudieron guardar los cambios.'
+    console.error(error)
+    assignFormErrors(getValidationErrors(error))
+    actionError.value = getReadableErrorMessage(error, 'No se pudieron guardar los cambios.')
   } finally {
     isSaving.value = false
   }
 }
 
-function toggleActive() {
+async function saveTemporaryPassword() {
+  if (!selectedUser.value) return
+
+  isPasswordSaving.value = true
   clearMessages()
+  clearPasswordErrors()
+
+  try {
+    if (!passwordForm.password || passwordForm.password.length < 8) {
+      passwordErrors.password = 'La contraseña debe tener al menos 8 caracteres.'
+      return
+    }
+
+    if (passwordForm.password !== passwordForm.password_confirmation) {
+      passwordErrors.password_confirmation = 'Las contraseñas no coinciden.'
+      return
+    }
+
+    await updateAdminUserPassword(selectedUser.value.id, {
+      password: passwordForm.password,
+      password_confirmation: passwordForm.password_confirmation,
+    })
+
+    resetPasswordForm()
+    successMessage.value = 'La contraseña temporal se ha actualizado correctamente.'
+  } catch (error) {
+    console.error(error)
+    assignPasswordErrors(getValidationErrors(error))
+    actionError.value = getReadableErrorMessage(error, 'No se pudo actualizar la contraseña temporal.')
+  } finally {
+    isPasswordSaving.value = false
+  }
+}
+
+async function toggleActive() {
+  if (!selectedUser.value) return
+
+  clearMessages()
+  clearFormErrors()
 
   if (isCurrentAdmin.value) {
     actionError.value = 'No puedes desactivar tu propia cuenta.'
     return
   }
 
-  form.is_active = !form.is_active
-}
+  isSaving.value = true
 
-function sendPasswordReset() {
-  clearMessages()
+  try {
+    const updatedUser = await updateAdminUser(selectedUser.value.id, {
+      is_active: !selectedUser.value.is_active,
+    })
 
-  // TODO backend:
-  // await adminUsersService.sendPasswordReset(selectedUser.value.id)
-  successMessage.value = 'Se ha preparado el envío del enlace de recuperación al usuario.'
+    selectedUser.value = updatedUser
+    successMessage.value = updatedUser.is_active
+      ? 'La cuenta se ha activado correctamente.'
+      : 'La cuenta se ha desactivado correctamente.'
+  } catch (error) {
+    console.error(error)
+    actionError.value = getReadableErrorMessage(error, 'No se pudo actualizar el estado de la cuenta.')
+  } finally {
+    isSaving.value = false
+  }
 }
 
 function formatRole(role) {
   const labels = {
     admin: 'Admin',
     staff: 'Staff',
-    cliente: 'Cliente',
     client: 'Cliente',
+    cliente: 'Cliente',
   }
 
   return labels[role] || 'Sin rol'
@@ -727,11 +971,23 @@ function roleBadgeClass(role) {
   const classes = {
     admin: 'bg-purple-100 text-purple-700',
     staff: 'bg-pink-100 text-pink-700',
-    cliente: 'bg-sky-100 text-sky-700',
     client: 'bg-sky-100 text-sky-700',
+    cliente: 'bg-sky-100 text-sky-700',
   }
 
   return classes[role] || 'bg-white/20 text-white'
+}
+
+function formatDate(value) {
+  if (!value) return 'Sin fecha'
+
+  return new Intl.DateTimeFormat('es-ES', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
 }
 </script>
 

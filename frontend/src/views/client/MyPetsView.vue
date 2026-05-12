@@ -63,6 +63,7 @@
                       <div class="mt-3 h-4 w-20 rounded bg-[#F3EDF8]"></div>
                     </div>
                   </div>
+
                   <div class="flex flex-col gap-2">
                     <div class="h-9 w-24 rounded-2xl bg-[#F7F1FC]"></div>
                     <div class="h-8 w-28 rounded-full bg-[#F7F1FC]"></div>
@@ -77,6 +78,7 @@
                 <div class="mt-3 h-[116px] rounded-2xl bg-[#FCFBFE]"></div>
                 <div class="mt-4 h-[120px] rounded-2xl bg-[#FCFBFE]"></div>
                 <div class="mt-5 h-11 rounded-2xl bg-[#EEE7F6]"></div>
+
                 <div class="mt-3 grid grid-cols-2 gap-3">
                   <div class="h-11 rounded-2xl bg-[#F7F1FC]"></div>
                   <div class="h-11 rounded-2xl bg-[#F7F1FC]"></div>
@@ -201,6 +203,7 @@
                       <h3 class="truncate text-lg font-bold tracking-tight text-slate-900">
                         {{ pet.name }}
                       </h3>
+
                       <p class="mt-1 text-sm text-slate-500">
                         {{ pet.breed || 'Raza no indicada' }}
                       </p>
@@ -227,13 +230,21 @@
                 <!-- Datos -->
                 <div class="mt-5 grid gap-3 sm:grid-cols-2">
                   <div class="rounded-2xl bg-[#FAF8FC] px-4 py-3">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Tamaño</p>
-                    <p class="mt-1 text-sm font-semibold text-slate-800">{{ sizeLabel(pet.size) }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Tamaño
+                    </p>
+                    <p class="mt-1 text-sm font-semibold text-slate-800">
+                      {{ sizeLabel(pet.size) }}
+                    </p>
                   </div>
 
                   <div class="rounded-2xl bg-[#FAF8FC] px-4 py-3">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Edad</p>
-                    <p class="mt-1 text-sm font-semibold text-slate-800">{{ ageLabel(pet.birth_date) }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                      Edad
+                    </p>
+                    <p class="mt-1 text-sm font-semibold text-slate-800">
+                      {{ ageLabel(pet.birth_date) }}
+                    </p>
                   </div>
                 </div>
 
@@ -245,16 +256,16 @@
 
                   <template v-if="getTodayReservation(pet)">
                     <p class="mt-1 text-sm font-semibold text-slate-900">
-                      {{ getTodayReservation(pet).service_name }}
+                      {{ getReservationServiceName(getTodayReservation(pet)) }}
                     </p>
                     <p class="mt-1 text-sm text-slate-500">
-                      Hoy · hasta {{ formatOnlyTime(getTodayReservation(pet).end_at) }}
+                      Hoy · hasta {{ formatOnlyTime(getTodayReservation(pet).end_at || getTodayReservation(pet).start_at) }}
                     </p>
                   </template>
 
                   <template v-else-if="getUpcomingReservation(pet)">
                     <p class="mt-1 text-sm font-semibold text-slate-900">
-                      {{ getUpcomingReservation(pet).service_name }}
+                      {{ getReservationServiceName(getUpcomingReservation(pet)) }}
                     </p>
                     <p class="mt-1 text-sm text-slate-500">
                       {{ formatDateTime(getUpcomingReservation(pet).start_at) }}
@@ -286,7 +297,7 @@
                 <!-- Acciones -->
                 <div class="mt-5 border-t border-[#F1EBF7] pt-4">
                   <RouterLink
-                    :to="{ name: 'my-reservations-new', query: { petId: pet.id } }"
+                    :to="{ name: 'my-reservations-new', query: { pet: pet.id } }"
                     class="inline-flex h-11 w-full items-center justify-center rounded-2xl bg-[#5A208E] px-4 text-sm font-semibold text-white transition hover:bg-[#4B1A77]"
                   >
                     Hacer una reserva
@@ -314,7 +325,7 @@
                     @click="openDeleteModal(pet)"
                     class="mt-3 inline-flex h-11 w-full items-center justify-center rounded-2xl border border-red-200 bg-white px-4 text-sm font-semibold text-red-700 transition hover:bg-red-50"
                   >
-                    Dar de baja
+                    Eliminar mascota
                   </button>
                 </div>
               </div>
@@ -328,7 +339,11 @@
             <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F5EFFB] text-xl font-bold text-[#5A208E]">
               🐾
             </div>
-            <h3 class="mt-4 text-lg font-bold text-slate-900">{{ emptyState.title }}</h3>
+
+            <h3 class="mt-4 text-lg font-bold text-slate-900">
+              {{ emptyState.title }}
+            </h3>
+
             <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
               {{ emptyState.description }}
             </p>
@@ -356,6 +371,7 @@
             <p class="text-xs font-semibold uppercase tracking-wide text-[#A22068]">
               {{ petModalMode === 'create' ? 'Nueva mascota' : 'Editar mascota' }}
             </p>
+
             <h2 class="mt-1 text-xl font-bold tracking-tight text-slate-900">
               {{
                 petModalMode === 'create'
@@ -363,6 +379,7 @@
                   : `Editar a ${petFormInitialData.name || 'tu mascota'}`
               }}
             </h2>
+
             <p class="mt-1 text-sm text-slate-500">
               Completa solo la información necesaria para su ficha.
             </p>
@@ -394,21 +411,22 @@
       </div>
     </div>
 
-    <!-- Modal baja -->
+    <!-- Modal eliminar -->
     <div
       v-if="petToDelete"
       class="fixed inset-0 z-50 flex items-center justify-center bg-[#2C1C43]/45 px-4 py-6 backdrop-blur-[2px]"
     >
       <div class="w-full max-w-lg rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-xl sm:p-6">
         <p class="text-xs font-semibold uppercase tracking-wide text-red-600">
-          Dar de baja mascota
+          Eliminar mascota
         </p>
+
         <h2 class="mt-1 text-xl font-bold tracking-tight text-slate-900">
-          ¿Quieres dar de baja a {{ petToDelete.name }}?
+          ¿Quieres eliminar a {{ petToDelete.name }}?
         </h2>
+
         <p class="mt-3 text-sm leading-6 text-slate-500">
-          Esta acción está preparada para conectarse al backend. Antes de hacerlo en producción,
-          conviene revisar si tiene reservas futuras activas.
+          Solo se podrá eliminar si no tiene reservas asociadas. Si ya tiene historial, conservaremos su ficha para no perder información importante.
         </p>
 
         <div class="mt-5 flex flex-wrap justify-end gap-3">
@@ -425,7 +443,7 @@
             @click="confirmDeletePet"
             class="inline-flex h-11 items-center justify-center rounded-2xl bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700"
           >
-            Confirmar baja
+            Confirmar eliminación
           </button>
         </div>
       </div>
@@ -437,21 +455,23 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import PetForm from '@/components/pets/PetForm.vue'
-import { getMyPets } from '@/services/petsService'
+import { getMyPets, createPet, updatePet, deletePet } from '@/services/petsService'
 import { getMyReservations } from '@/services/reservationsService'
 import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const petsMessages = uiMessages.pets || {
   success: {
     created: 'Nueva ficha guardada. Todo listo para su próxima aventura.',
     updated: 'Ficha actualizada correctamente. Ya está al día.',
-    deleted: 'La mascota se ha dado de baja correctamente.',
+    deleted: 'La mascota se ha eliminado correctamente.',
   },
   errors: {
     load: 'No hemos podido cargar tus mascotas por ahora.',
     save: 'No se pudo guardar la ficha de la mascota.',
-    delete: 'No se pudo dar de baja la mascota.',
+    delete: 'No se pudo eliminar la mascota.',
   },
   empty: {
     title: 'Aquí no hay huellitas todavía',
@@ -484,6 +504,7 @@ onMounted(() => {
 async function loadPetsView() {
   isLoading.value = true
   loadError.value = ''
+  actionError.value = ''
 
   try {
     const [petsData, reservationsData] = await Promise.all([
@@ -495,6 +516,7 @@ async function loadPetsView() {
     reservations.value = Array.isArray(reservationsData) ? reservationsData : []
   } catch (error) {
     console.error(error)
+
     loadError.value = getReadableErrorMessage(
       error,
       petsMessages.errors.load || 'No hemos podido cargar tus mascotas por ahora.',
@@ -507,7 +529,10 @@ async function loadPetsView() {
 const enrichedPets = computed(() => {
   return pets.value.map((pet) => {
     const petReservations = reservations.value.filter((reservation) => {
-      return reservation?.pet_id === pet.id || reservation?.pet?.id === pet.id
+      return (
+        Number(reservation?.pet_id) === Number(pet.id) ||
+        Number(reservation?.pet?.id) === Number(pet.id)
+      )
     })
 
     return {
@@ -552,10 +577,6 @@ const quickCards = computed(() => [
   },
 ])
 
-function isQuickViewActive(key) {
-  return quickView.value === key
-}
-
 const filteredPets = computed(() => {
   if (quickView.value === 'today') {
     return enrichedPets.value.filter((pet) => getPresenceState(pet) === 'today')
@@ -586,8 +607,55 @@ const emptyState = computed(() => {
   }
 })
 
+const petFormInitialData = computed(() => {
+  if (petModalMode.value === 'create') {
+    return {
+      name: '',
+      breed: '',
+      size: '',
+      birth_date: '',
+      care_notes: '',
+      photo_path: '',
+    }
+  }
+
+  const selectedPet = enrichedPets.value.find((item) => Number(item.id) === Number(editingPetId.value))
+
+  if (!selectedPet) {
+    return {
+      name: '',
+      breed: '',
+      size: '',
+      birth_date: '',
+      care_notes: '',
+      photo_path: '',
+    }
+  }
+
+  return {
+    name: selectedPet.name || '',
+    breed: selectedPet.breed || '',
+    size: selectedPet.size || '',
+    birth_date: selectedPet.birth_date || '',
+    care_notes: selectedPet.care_notes || '',
+    photo_path: selectedPet.photo_path || '',
+  }
+})
+
+const petFormKey = computed(() => `${petModalMode.value}-${editingPetId.value ?? 'new'}`)
+
+function isQuickViewActive(key) {
+  return quickView.value === key
+}
+
 function sortReservations(reservationsList = []) {
-  return [...reservationsList].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+  return [...reservationsList].sort((a, b) => {
+    return new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+  })
+}
+
+function getReservationEndTime(reservation) {
+  return reservation?.end_at || reservation?.start_at || null
 }
 
 function getTodayReservation(pet) {
@@ -602,7 +670,7 @@ function getTodayReservation(pet) {
       if (reservation.status === 'cancelled') return false
 
       const start = new Date(reservation.start_at).getTime()
-      const end = reservation.end_at ? new Date(reservation.end_at).getTime() : start
+      const end = new Date(getReservationEndTime(reservation)).getTime()
 
       return start <= todayEnd.getTime() && end >= todayStart.getTime()
     }) || null
@@ -615,7 +683,10 @@ function getUpcomingReservation(pet) {
   return (
     sortReservations(pet.reservations).find((reservation) => {
       if (reservation.status === 'cancelled') return false
-      return new Date(reservation.end_at).getTime() >= now
+
+      const end = new Date(getReservationEndTime(reservation)).getTime()
+
+      return end >= now
     }) || null
   )
 }
@@ -625,24 +696,30 @@ function isUpcomingEntry(pet) {
 
   return (pet.reservations || []).some((reservation) => {
     if (reservation.status === 'cancelled') return false
+
     return new Date(reservation.start_at).getTime() > now
   })
 }
 
 function getLatestReport(pet) {
-  return (pet.reservations || [])
-    .flatMap((reservation) => reservation.daily_reports || [])
-    .filter(isVisibleForClient)
-    .sort((a, b) => new Date(b.report_date).getTime() - new Date(a.report_date).getTime())[0] || null
+  return (
+    (pet.reservations || [])
+      .flatMap((reservation) => reservation.daily_reports || reservation.dailyReports || [])
+      .filter(isVisibleForClient)
+      .sort((a, b) => new Date(b.report_date).getTime() - new Date(a.report_date).getTime())[0] || null
+  )
 }
 
 function isVisibleForClient(report) {
   const status = String(report?.status || '').toLowerCase()
 
-  if (status === 'draft') return false
-  if (status === 'published' || status === 'completed') return true
+  if (report?.is_draft || status === 'draft') return false
 
-  return Boolean(report?.published_at || report?.completed_at)
+  if (['published', 'completed', 'complete'].includes(status)) return true
+
+  if (report?.published_at || report?.completed_at) return true
+
+  return Boolean(report?.summary)
 }
 
 function buildPetFollowUpsLink(pet) {
@@ -678,6 +755,10 @@ function presenceBadgeClass(state) {
   return classes[state] || 'bg-slate-100 text-slate-600 ring-1 ring-slate-200'
 }
 
+function getReservationServiceName(reservation) {
+  return reservation?.service_name || reservation?.service?.name || 'Reserva'
+}
+
 function sizeLabel(size) {
   const labels = {
     toy: 'Toy',
@@ -703,6 +784,7 @@ function ageLabel(dateString) {
 
   if (years <= 0) return 'Menos de 1 año'
   if (years === 1) return '1 año'
+
   return `${years} años`
 }
 
@@ -730,11 +812,35 @@ function formatOnlyTime(dateString) {
 function truncateText(text, maxLength = 160) {
   if (!text) return ''
   if (text.length <= maxLength) return text
+
   return `${text.slice(0, maxLength).trim()}…`
 }
 
-function getPetImage(pet) {
-  return pet.photo_preview || pet.photo_path || ''
+function getPetImage(petItem) {
+  const value =
+    petItem?.photo_preview ||
+    petItem?.photo_url ||
+    petItem?.photo_path ||
+    ''
+
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
 }
 
 function openCreateModal() {
@@ -759,52 +865,14 @@ function closePetModal() {
   petFormExternalErrors.value = {}
 }
 
-const petFormInitialData = computed(() => {
-  if (petModalMode.value === 'create') {
-    return {
-      name: '',
-      breed: '',
-      size: '',
-      birth_date: '',
-      care_notes: '',
-      photo_path: '',
-    }
-  }
-
-  const pet = enrichedPets.value.find((item) => item.id === editingPetId.value)
-
-  if (!pet) {
-    return {
-      name: '',
-      breed: '',
-      size: '',
-      birth_date: '',
-      care_notes: '',
-      photo_path: '',
-    }
-  }
-
-  return {
-    name: pet.name || '',
-    breed: pet.breed || '',
-    size: pet.size || '',
-    birth_date: pet.birth_date || '',
-    care_notes: pet.care_notes || '',
-    photo_path: pet.photo_path || '',
-  }
-})
-
-const petFormKey = computed(() => `${petModalMode.value}-${editingPetId.value ?? 'new'}`)
-
 function normalizePetPayload(payload = {}) {
   return {
     name: payload.name?.trim() || '',
-    species: payload.species || 'Perro',
     breed: payload.breed?.trim() || '',
     size: payload.size || '',
     birth_date: payload.birth_date || null,
     care_notes: payload.care_notes?.trim() || '',
-    photo_path: payload.preview_url || payload.photo_path || '',
+    photo_path: payload.photo_path || '',
     photo_file: payload.photo_file || null,
   }
 }
@@ -812,39 +880,31 @@ function normalizePetPayload(payload = {}) {
 async function handlePetSubmit(payload) {
   isSubmitting.value = true
   actionError.value = ''
+  successMessage.value = ''
   petFormExternalErrors.value = {}
 
   try {
     const normalizedPayload = normalizePetPayload(payload)
 
     if (petModalMode.value === 'create') {
-      // TODO backend:
-      // const createdPet = await createPet(normalizedPayload)
-
-      const newId = Math.max(0, ...pets.value.map((pet) => pet.id)) + 1
+      const createdPet = await createPet(normalizedPayload)
 
       pets.value.unshift({
-        id: newId,
-        owner_user_id: 1,
-        species: 'Perro',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        reservations: [],
-        ...normalizedPayload,
+        ...createdPet,
+        reservations: createdPet.reservations || [],
       })
 
       successMessage.value =
         petsMessages.success?.created || 'Nueva ficha guardada. Todo listo para su próxima aventura.'
     } else {
-      // TODO backend:
-      // await updatePet(editingPetId.value, normalizedPayload)
+      const updatedPet = await updatePet(editingPetId.value, normalizedPayload)
 
       pets.value = pets.value.map((pet) =>
-        pet.id === editingPetId.value
+        Number(pet.id) === Number(editingPetId.value)
           ? {
               ...pet,
-              ...normalizedPayload,
-              updated_at: new Date().toISOString(),
+              ...updatedPet,
+              reservations: updatedPet.reservations || pet.reservations || [],
             }
           : pet,
       )
@@ -856,7 +916,9 @@ async function handlePetSubmit(payload) {
     closePetModal()
   } catch (error) {
     console.error(error)
+
     petFormExternalErrors.value = getValidationErrors(error)
+
     actionError.value = getReadableErrorMessage(
       error,
       petsMessages.errors?.save || 'No se pudo guardar la ficha de la mascota.',
@@ -870,27 +932,43 @@ function openDeleteModal(pet) {
   petToDelete.value = pet
 }
 
+function getDeletePetErrorMessage(error) {
+  if (error?.status === 409) {
+    return (
+      error?.data?.message ||
+      error?.message ||
+      'No se puede eliminar esta mascota porque tiene reservas asociadas.'
+    )
+  }
+
+  return getReadableErrorMessage(
+    error,
+    petsMessages.errors?.delete || 'No se pudo eliminar la mascota.',
+  )
+}
+
 async function confirmDeletePet() {
   if (!petToDelete.value) return
 
   actionError.value = ''
+  successMessage.value = ''
 
   try {
-    // TODO backend:
-    // await deactivatePet(petToDelete.value.id)
+    await deletePet(petToDelete.value.id)
 
-    pets.value = pets.value.filter((pet) => pet.id !== petToDelete.value.id)
+    pets.value = pets.value.filter((pet) => {
+      return Number(pet.id) !== Number(petToDelete.value.id)
+    })
 
     successMessage.value =
-      petsMessages.success?.deleted || 'La mascota se ha dado de baja correctamente.'
+      petsMessages.success?.deleted || 'La mascota se ha eliminado correctamente.'
 
     petToDelete.value = null
   } catch (error) {
     console.error(error)
-    actionError.value = getReadableErrorMessage(
-      error,
-      petsMessages.errors?.delete || 'No se pudo dar de baja la mascota.',
-    )
+
+    actionError.value = getDeletePetErrorMessage(error)
+    petToDelete.value = null
   }
 }
 </script>

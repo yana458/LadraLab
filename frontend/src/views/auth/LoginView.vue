@@ -2,7 +2,6 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { demoAccesses } from '@/mocks/authUsers'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,9 +25,10 @@ const feedback = reactive({
 
 const showPassword = ref(false)
 const isSubmitting = ref(false)
-const isButtonHovered = ref(false)
 const isDogEntering = ref(false)
-const isLoginRejected = ref(false)
+const currentDogFrame = ref(0)
+
+let dogFrameInterval = null
 
 const registerSuccessMessage = computed(() =>
   route.query.registered === '1'
@@ -36,47 +36,36 @@ const registerSuccessMessage = computed(() =>
     : '',
 )
 
-const dogFrames = Array.from({ length: 9 }, (_, index) => `/images/dog-step-${index + 1}.png`)
-const currentDogFrame = ref(0)
-let dogFrameInterval = null
+const features = [
+  {
+    title: 'Reservas organizadas',
+    text: 'Consulta solicitudes, próximas estancias y citas desde un único lugar.',
+    image: '/images/calendar-icon.png',
+    alt: 'Icono de calendario con check',
+  },
+  {
+    title: 'Seguimientos claros',
+    text: 'Mantén el día a día de cada mascota bien registrado y fácil de consultar.',
+    image: '/images/ladralab-check.png',
+    alt: 'Icono de checklist con huella',
+  },
+  {
+    title: 'Acceso para cada perfil',
+    text: 'Equipo, clientes y familias acceden a su espacio de forma sencilla.',
+    image: '/images/social-icon.png',
+    alt: 'Icono de perfiles con huella',
+  },
+]
+
+const dogFrames = Array.from(
+  { length: 8 },
+  (_, index) => `/images/dog-step-${index + 1}.png`,
+)
 
 const currentDogSrc = computed(() => dogFrames[currentDogFrame.value])
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function startDogWalk() {
-  if (dogFrameInterval) return
-
-  dogFrameInterval = setInterval(() => {
-    currentDogFrame.value = (currentDogFrame.value + 1) % dogFrames.length
-  }, 65)
-}
-
-function stopDogWalk(force = false) {
-  if (isSubmitting.value && !force) return
-
-  if (dogFrameInterval) {
-    clearInterval(dogFrameInterval)
-    dogFrameInterval = null
-  }
-
-  currentDogFrame.value = 0
-}
-
-function handleSceneEnter() {
-  if (isSubmitting.value || isLoginRejected.value) return
-  isButtonHovered.value = true
-  isDogEntering.value = false
-  startDogWalk()
-}
-
-function handleSceneLeave() {
-  if (isSubmitting.value || isLoginRejected.value) return
-  isButtonHovered.value = false
-  isDogEntering.value = false
-  stopDogWalk()
 }
 
 function clearErrors() {
@@ -90,9 +79,9 @@ function validateForm() {
   clearErrors()
 
   if (!form.email) {
-    errors.email = 'Introduce tu email.'
+    errors.email = 'Introduce tu correo electrónico.'
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Introduce un email válido.'
+    errors.email = 'Introduce un correo válido.'
   }
 
   if (!form.password) {
@@ -102,36 +91,51 @@ function validateForm() {
   return !errors.email && !errors.password
 }
 
-function fillDemoUser(user) {
-  form.email = user.email
-  form.password = user.password
-  form.remember = true
-  clearErrors()
+function stopDogAnimation(reset = true) {
+  if (dogFrameInterval) {
+    clearInterval(dogFrameInterval)
+    dogFrameInterval = null
+  }
+
+  if (reset) {
+    isDogEntering.value = false
+    currentDogFrame.value = 0
+  }
+}
+
+function startDogAnimation() {
+  stopDogAnimation(false)
+
+  isDogEntering.value = true
+  currentDogFrame.value = 0
+
+  dogFrameInterval = window.setInterval(() => {
+    currentDogFrame.value = (currentDogFrame.value + 1) % dogFrames.length
+  }, 90)
 }
 
 async function handleSubmit() {
+  if (isSubmitting.value) return
   if (!validateForm()) return
 
   isSubmitting.value = true
-  isButtonHovered.value = true
-  isDogEntering.value = false
-  isLoginRejected.value = false
-  startDogWalk()
+  feedback.type = ''
+  feedback.message = ''
+
+  let loginSucceeded = false
 
   try {
-    await wait(250)
+    startDogAnimation()
 
-    // Cuando se conecte el backend real, el store podrá llamar al endpoint:
-    // POST /api/login
+    await wait(1250)
+
     await authStore.login({
       email: form.email,
       password: form.password,
       remember: form.remember,
     })
 
-    isDogEntering.value = true
-
-    await wait(820)
+    loginSucceeded = true
 
     const redirect =
       typeof route.query.redirect === 'string'
@@ -141,617 +145,779 @@ async function handleSubmit() {
     await router.push(redirect)
   } catch (error) {
     feedback.type = 'error'
-    feedback.message = error?.message || 'No se pudo iniciar sesión. Revisa los datos e inténtalo de nuevo.'
+    feedback.message =
+      error?.message || 'No se pudo iniciar sesión. Revisa los datos e inténtalo de nuevo.'
 
-    isSubmitting.value = false
-    isDogEntering.value = false
-    isLoginRejected.value = true
-
-    await wait(1000)
-
-    isLoginRejected.value = false
-    isButtonHovered.value = false
-    stopDogWalk(true)
+    await wait(250)
+    stopDogAnimation(true)
+  } finally {
+    if (!loginSucceeded) {
+      isSubmitting.value = false
+    }
   }
 }
 
 onBeforeUnmount(() => {
-  if (dogFrameInterval) clearInterval(dogFrameInterval)
+  stopDogAnimation(false)
 })
 </script>
 
 <template>
-  <main class="min-h-screen overflow-hidden bg-[#F4EFFA] text-[#15152E]">
-    <section class="relative flex min-h-screen items-center justify-center px-4 py-6 sm:px-6 lg:px-8">
+  <main class="login-page min-h-screen overflow-hidden bg-[#F6F0FF] text-[#24113F]">
+    <section class="relative flex min-h-screen items-center justify-center px-4 py-3 sm:px-6 lg:px-8">
       <div class="pointer-events-none absolute inset-0 overflow-hidden">
-        <div class="absolute -left-24 top-10 h-72 w-72 rounded-full bg-[#E52C91]/20 blur-3xl"></div>
-        <div class="absolute -right-20 bottom-10 h-80 w-80 rounded-full bg-[#6D28A8]/20 blur-3xl"></div>
-        <div class="absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40 blur-3xl"></div>
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
+        <span class="blob blob-3"></span>
+
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-1" aria-hidden="true" />
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-2" aria-hidden="true" />
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-3" aria-hidden="true" />
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-4" aria-hidden="true" />
+
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-5" aria-hidden="true" />
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-6" aria-hidden="true" />
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-7" aria-hidden="true" />
+        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-8" aria-hidden="true" />
       </div>
 
-      <div class="relative grid w-full max-w-6xl overflow-hidden rounded-[2rem] bg-white shadow-[0_24px_80px_rgba(64,33,94,0.16)] lg:grid-cols-[1.05fr_0.95fr]">
-        <section class="relative hidden min-h-[660px] flex-col justify-between overflow-hidden bg-gradient-to-br from-[#5B1B8F] via-[#8A2BB0] to-[#E52C91] p-10 text-white lg:flex">
-          <div class="absolute -left-20 top-20 h-72 w-72 rounded-full border border-white/15"></div>
-          <div class="absolute -right-24 bottom-10 h-96 w-96 rounded-full border border-white/15"></div>
-          <div class="absolute inset-x-10 bottom-28 h-px bg-white/10"></div>
-
-          <RouterLink to="/" class="relative inline-flex items-center gap-3 text-white">
-            <span class="grid h-14 w-14 place-items-center rounded-3xl bg-white/16 text-2xl font-black shadow-inner">L</span>
-            <span>
-              <span class="block text-xs font-bold uppercase tracking-[0.38em] text-white/70">Ladralab</span>
-              <span class="block text-lg font-bold">Cuidado conectado</span>
-            </span>
-          </RouterLink>
-
-          <div class="relative max-w-xl">
-            <p class="mb-4 inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white/85 ring-1 ring-white/20">
-              Gestión diaria para centros caninos
-            </p>
-
-            <h1 class="font-ladralab-brush text-6xl leading-none text-white drop-shadow-sm xl:text-7xl">
-              Bienvenida de nuevo
-            </h1>
-
-            <p class="mt-6 max-w-lg text-lg leading-8 text-white/82">
-              Accede a reservas, mascotas, recursos y seguimientos desde un panel claro y cómodo para cada tipo de usuario.
-            </p>
-          </div>
-
-          <div class="relative grid grid-cols-3 gap-4">
-            <article class="rounded-3xl bg-white/12 p-4 ring-1 ring-white/16 backdrop-blur">
-              <p class="text-3xl font-black">12</p>
-              <p class="mt-2 text-sm font-semibold text-white/75">reservas hoy</p>
-            </article>
-            <article class="rounded-3xl bg-white/12 p-4 ring-1 ring-white/16 backdrop-blur">
-              <p class="text-3xl font-black">7</p>
-              <p class="mt-2 text-sm font-semibold text-white/75">seguimientos</p>
-            </article>
-            <article class="rounded-3xl bg-white/12 p-4 ring-1 ring-white/16 backdrop-blur">
-              <p class="text-3xl font-black">3</p>
-              <p class="mt-2 text-sm font-semibold text-white/75">roles</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="flex min-h-[660px] flex-col justify-center px-5 py-8 sm:px-8 lg:px-10">
-          <div class="mx-auto w-full max-w-md">
-            <div class="mb-8 flex items-center justify-between lg:hidden">
-              <RouterLink to="/" class="inline-flex items-center gap-3">
-                <span class="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-[#6824A5] to-[#E52C91] text-xl font-black text-white">L</span>
-                <span>
-                  <span class="block text-xs font-bold uppercase tracking-[0.32em] text-[#9A89B4]">Ladralab</span>
-                  <span class="block font-bold text-[#15152E]">Cuidado conectado</span>
-                </span>
-              </RouterLink>
-            </div>
-
-            <div class="mb-8">
-              <p class="text-xs font-bold uppercase tracking-[0.34em] text-[#9A6AC8]">Acceso</p>
-              <h2 class="mt-2 text-3xl font-black text-[#15152E]">Iniciar sesión</h2>
-              <p class="mt-3 leading-7 text-[#657491]">
-                Entra con tu correo y contraseña para continuar en tu panel.
-              </p>
-            </div>
-
-            <div
-              v-if="registerSuccessMessage"
-              class="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700"
-            >
-              {{ registerSuccessMessage }}
-            </div>
-
-            <div
-              v-if="feedback.message"
-              class="mb-5 rounded-2xl border px-4 py-3 text-sm font-semibold"
-              :class="feedback.type === 'error' ? 'border-red-100 bg-red-50 text-red-600' : 'border-emerald-100 bg-emerald-50 text-emerald-700'"
-            >
-              {{ feedback.message }}
-            </div>
-
-            <form class="space-y-5" @submit.prevent="handleSubmit">
-              <label class="block">
-                <span class="mb-2 block text-sm font-semibold text-[#33415F]">Email</span>
-                <input
-                  v-model.trim="form.email"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="ana@ladralab.test"
-                  class="h-12 w-full rounded-2xl border border-[#D8CBEA] bg-white px-4 text-sm font-medium outline-none transition placeholder:text-[#A7B0C4] focus:border-[#7A2CB2] focus:ring-4 focus:ring-[#7A2CB2]/10"
-                  :class="errors.email ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''"
+      <div class="relative w-full max-w-[1280px]">
+        <div
+          class="grid overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_22px_70px_rgba(86,45,126,0.16)] lg:min-h-[620px] lg:grid-cols-[0.95fr_1.05fr]"
+        >
+          <section
+            class="brand-panel relative hidden overflow-hidden bg-gradient-to-br from-white via-[#FCF8FF] to-[#F1E7FF] px-8 py-5 lg:block xl:px-10"
+          >
+            <div class="relative z-10 flex min-h-[620px] flex-col">
+              <RouterLink to="/" class="inline-flex w-fit items-center">
+                <img
+                  src="/images/ladralab-logo.png"
+                  alt="LadraLab"
+                  class="w-52 drop-shadow-[0_12px_20px_rgba(74,24,122,0.14)] xl:w-60"
                 />
-                <span v-if="errors.email" class="mt-2 block text-xs font-semibold text-red-500">{{ errors.email }}</span>
-              </label>
+              </RouterLink>
 
-              <label class="block">
-                <span class="mb-2 block text-sm font-semibold text-[#33415F]">Contraseña</span>
-                <div class="relative">
-                  <input
-                    v-model="form.password"
-                    :type="showPassword ? 'text' : 'password'"
-                    autocomplete="current-password"
-                    placeholder="Introduce tu contraseña"
-                    class="h-12 w-full rounded-2xl border border-[#D8CBEA] bg-white px-4 pr-24 text-sm font-medium outline-none transition placeholder:text-[#A7B0C4] focus:border-[#7A2CB2] focus:ring-4 focus:ring-[#7A2CB2]/10"
-                    :class="errors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-100' : ''"
-                  />
-
-                  <button
-                    type="button"
-                    class="absolute right-2 top-1/2 h-8 -translate-y-1/2 rounded-xl px-3 text-xs font-bold text-[#6C2AA6] transition hover:bg-[#F4EFFA]"
-                    @click="showPassword = !showPassword"
-                  >
-                    {{ showPassword ? 'Ocultar' : 'Ver' }}
-                  </button>
-                </div>
-
-                <span v-if="errors.password" class="mt-2 block text-xs font-semibold text-red-500">{{ errors.password }}</span>
-              </label>
-
-              <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
-                <label class="inline-flex cursor-pointer items-center gap-2 font-semibold text-[#596983]">
-                  <input v-model="form.remember" type="checkbox" class="h-4 w-4 rounded border-[#CDBBDF] text-[#6B25A6] focus:ring-[#6B25A6]" />
-                  Recordarme
-                </label>
-
-                <RouterLink
-                  to="/recuperar-contrasena"
-                  class="font-bold text-[#6B25A6] transition hover:text-[#E52C91]"
+              <div class="mt-4 max-w-[540px]">
+                <p
+                  class="mb-3 inline-flex rounded-full border border-[#E7D8F6] bg-white/80 px-4 py-2 text-[11px] font-black uppercase tracking-[0.22em] text-[#8B5DB8] shadow-sm"
                 >
-                  ¿Has olvidado tu contraseña?
+                  Gestión sencilla y conectada
+                </p>
+
+                <h1 class="text-[2.05rem] font-black leading-tight text-[#24113F] xl:text-[2.45rem] mt-3 max-w-[480px]">
+                  Tu centro y tus mascotas,
+                  <span class="block text-[#E83C9D]">más claro y conectado</span>
+                </h1>
+
+                <p class="mt-10 max-w-sm text-[1rem] leading-8 text-[#635778]">
+                  Organiza reservas, seguimientos e información diaria desde un único espacio pensado para el equipo del centro, las familias de las mascotas y la administración.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section class="relative flex min-h-[620px] items-center justify-center bg-white px-6 py-5 sm:px-10 lg:px-12">
+            <div class="w-full max-w-2xl">
+              <div class="mb-4 flex justify-center lg:hidden">
+                <RouterLink to="/" class="inline-flex">
+                  <img src="/images/ladralab-logo.png" alt="LadraLab" class="w-44" />
                 </RouterLink>
               </div>
 
-              <div
-                class="space-y-3"
-                @mouseenter="handleSceneEnter"
-                @mouseleave="handleSceneLeave"
-              >
-                <button
-                  type="submit"
-                  :disabled="isSubmitting || isLoginRejected"
-                  class="flex h-12 w-full items-center justify-center rounded-2xl bg-gradient-to-r from-[#6D28A8] to-[#E52C91] px-5 text-sm font-black text-white shadow-[0_14px_30px_rgba(109,40,168,0.24)] transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  {{ isSubmitting ? 'Entrando...' : 'Entrar a LadraLab' }}
-                </button>
+              <div class="mb-4">
+                <p class="text-sm font-black text-[#E83C9D]">Acceso</p>
+                <h2 class="mt-1.5 text-[2rem] font-black tracking-tight text-[#24113F] sm:text-[2.15rem]">
+                  Iniciar sesión
+                </h2>
+                <p class="mt-2 leading-7 text-[#6F6780]">
+                  Entra para acceder a tu espacio en LadraLab.
+                </p>
+              </div>
 
-                <div
-                  class="rounded-[1.6rem] border border-[#E8DFF2] bg-[#FCFAFE] px-4 py-3 transition"
-                  :class="{
-                    'border-[#D8BDEB] shadow-[0_14px_34px_rgba(109,40,168,0.10)]': isButtonHovered || isSubmitting,
-                    'border-red-100 bg-red-50/70': isLoginRejected,
-                  }"
-                >
-                  <div class="mb-2">
-                    <p class="text-sm font-black text-[#15152E]">
-                      {{ isLoginRejected ? 'Acceso bloqueado' : isDogEntering ? 'Puerta abierta' : 'Entrada a tu espacio' }}
-                    </p>
+              <div
+                v-if="registerSuccessMessage"
+                class="mb-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700"
+              >
+                {{ registerSuccessMessage }}
+              </div>
+
+              <div
+                v-if="feedback.message"
+                class="mb-3 rounded-2xl border px-4 py-3 text-sm font-semibold"
+                :class="
+                  feedback.type === 'error'
+                    ? 'border-red-100 bg-red-50 text-red-600'
+                    : 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                "
+              >
+                {{ feedback.message }}
+              </div>
+
+              <form class="space-y-3" @submit.prevent="handleSubmit">
+                <label class="block">
+                  <span class="mb-1.5 block text-sm font-bold text-[#504764]">
+                    Correo electrónico
+                  </span>
+
+                  <div class="input-shell" :class="errors.email ? 'input-shell--error' : ''">
+                    <span class="input-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5">
+                        <path
+                          d="M4.75 6.75h14.5v10.5H4.75V6.75Z"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linejoin="round"
+                        />
+                        <path
+                          d="m5.25 7.25 6.75 5 6.75-5"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </span>
+
+                    <input
+                      v-model.trim="form.email"
+                      type="email"
+                      autocomplete="email"
+                      placeholder="tu@correo.com"
+                      class="input-field"
+                    />
                   </div>
 
+                  <span v-if="errors.email" class="error-text">
+                    {{ errors.email }}
+                  </span>
+                </label>
+
+                <label class="block">
+                  <span class="mb-1.5 block text-sm font-bold text-[#504764]">
+                    Contraseña
+                  </span>
+
+                  <div class="input-shell" :class="errors.password ? 'input-shell--error' : ''">
+                    <span class="input-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5">
+                        <path
+                          d="M7.75 10.25V8.5a4.25 4.25 0 0 1 8.5 0v1.75"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                        />
+                        <path
+                          d="M6.75 10.25h10.5a1.5 1.5 0 0 1 1.5 1.5v5.5a1.5 1.5 0 0 1-1.5 1.5H6.75a1.5 1.5 0 0 1-1.5-1.5v-5.5a1.5 1.5 0 0 1 1.5-1.5Z"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                        />
+                      </svg>
+                    </span>
+
+                    <input
+                      v-model="form.password"
+                      :type="showPassword ? 'text' : 'password'"
+                      autocomplete="current-password"
+                      placeholder="Introduce tu contraseña"
+                      class="input-field pr-16"
+                    />
+
+                    <button
+                      type="button"
+                      class="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl px-3 py-2 text-xs font-black text-[#7E35B7] transition hover:bg-[#F5ECFF]"
+                      @click="showPassword = !showPassword"
+                    >
+                      {{ showPassword ? 'Ocultar' : 'Ver' }}
+                    </button>
+                  </div>
+
+                  <span v-if="errors.password" class="error-text">
+                    {{ errors.password }}
+                  </span>
+                </label>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
+                  <label class="inline-flex cursor-pointer items-center gap-2 font-semibold text-[#6F6780]">
+                    <input
+                      v-model="form.remember"
+                      type="checkbox"
+                      class="h-4 w-4 rounded border-[#D7C8EA] text-[#7330AC] focus:ring-[#7330AC]"
+                    />
+                    Recordarme
+                  </label>
+
+                  <RouterLink
+                    to="/recuperar-contrasena"
+                    class="font-black text-[#7330AC] transition hover:text-[#E83C9D]"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </RouterLink>
+                </div>
+
+                <!-- Perrito encima del botón -->
+                <div class="dog-strip" aria-hidden="true">
                   <div class="dog-scene">
-                    <div class="dog-scene__track"></div>
+                    <span class="dog-track"></span>
 
-                    <div
-                      class="dog-runner"
-                      :class="{
-                        walking: isButtonHovered || isSubmitting || isLoginRejected,
-                        entering: isDogEntering,
-                        rejecting: isLoginRejected,
-                      }"
-                    >
-                      <img
-                        :key="currentDogFrame"
-                        :src="currentDogSrc"
-                        alt=""
-                        class="dog-runner__image"
-                      />
-                    </div>
+                    <img
+                      :src="currentDogSrc"
+                      alt=""
+                      class="running-dog"
+                      :class="{ 'running-dog--entering': isDogEntering }"
+                    />
 
-                    <div
-                      class="dog-door"
-                      :class="{
-                        'dog-door--hover': isButtonHovered || isSubmitting || isLoginRejected,
-                        'dog-door--active': isDogEntering,
-                        'dog-door--reject': isLoginRejected,
-                      }"
-                    >
-                      <div class="dog-door__opening"></div>
-                      <div class="dog-door__panel">
-                        <span class="dog-door__panel-line dog-door__panel-line--top"></span>
-                        <span class="dog-door__panel-line dog-door__panel-line--mid"></span>
-                        <span class="dog-door__knob"></span>
-                      </div>
-                      <div class="dog-door__frame"></div>
-                      <div class="dog-door__light"></div>
-                      <div class="dog-door__paw" aria-hidden="true">
-                        <svg viewBox="0 0 64 64" class="dog-door__paw-icon">
-                          <ellipse cx="32" cy="41" rx="14" ry="11" fill="currentColor" />
-                          <circle cx="18" cy="22" r="6" fill="currentColor" />
-                          <circle cx="28" cy="16" r="6" fill="currentColor" />
-                          <circle cx="38" cy="16" r="6" fill="currentColor" />
-                          <circle cx="48" cy="22" r="6" fill="currentColor" />
-                        </svg>
+                    <div class="dog-door">
+                      <div
+                        class="dog-door-inner"
+                        :class="{ 'dog-door-inner--active': isDogEntering }"
+                      ></div>
+
+                      <div
+                        class="dog-door-panel"
+                        :class="{ 'dog-door-panel--open': isDogEntering }"
+                      >
+                        <span class="dog-door-knob"></span>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </form>
 
-            <div class="mt-8 rounded-3xl border border-[#E8DFF2] bg-[#FCFAFE] p-4">
-              <p class="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-[#9A89B4]">Accesos demo</p>
-
-              <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <button
-                  v-for="demo in demoAccesses"
-                  :key="demo.email"
-                  type="button"
-                  class="rounded-2xl border border-[#E0D2EE] bg-white px-3 py-3 text-left text-xs font-bold text-[#5A208E] transition hover:border-[#B991D6] hover:bg-[#F7F1FB]"
-                  @click="fillDemoUser(demo)"
+                  type="submit"
+                  :disabled="isSubmitting"
+                  class="group flex h-[3.05rem] w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-[#E83C9D] to-[#7430D0] px-5 text-base font-black text-white shadow-[0_16px_32px_rgba(132,56,194,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_38px_rgba(132,56,194,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <span class="block text-[#15152E]">{{ demo.label }}</span>
-                  <span class="mt-1 block truncate font-semibold text-[#7B89A4]">{{ demo.email }}</span>
+                  <img src="/images/paws-icon.png" alt="" class="button-paw" aria-hidden="true" />
+                  {{ isSubmitting ? 'Entrando...' : 'Entrar a LadraLab' }}
                 </button>
+              </form>
+
+              <div class="my-3 flex items-center gap-4 text-[#D8C8EC]">
+                <span class="h-px flex-1 bg-current"></span>
+
+                <img
+                  src="/images/paws-icon.png"
+                  alt=""
+                  class="separator-paw"
+                  aria-hidden="true"
+                />
+
+                <span class="h-px flex-1 bg-current"></span>
+              </div>
+
+              <p class="text-center text-sm font-semibold text-[#6F6780]">
+                ¿Aún no tienes cuenta?
+                <RouterLink
+                  to="/registro"
+                  class="font-black text-[#7330AC] transition hover:text-[#E83C9D]"
+                >
+                  Crear cuenta
+                </RouterLink>
+              </p>
+            </div>
+          </section>
+        </div>
+
+        <section class="mt-2 grid gap-3 md:grid-cols-3">
+          <article
+            v-for="feature in features"
+            :key="feature.title"
+            class="feature-card group rounded-[1.45rem] border border-white/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(86,45,126,0.12)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(86,45,126,0.16)]"
+          >
+            <div class="flex items-center gap-3.5">
+              <div class="feature-icon">
+                <img :src="feature.image" :alt="feature.alt" class="h-full w-full object-contain" />
+              </div>
+
+              <div>
+                <h3 class="text-[1rem] font-black leading-6 text-[#24113F]">
+                  {{ feature.title }}
+                </h3>
+                <p class="mt-1 text-sm leading-6 text-[#6F6780]">
+                  {{ feature.text }}
+                </p>
               </div>
             </div>
-
-            <p class="mt-7 text-center text-sm font-semibold text-[#657491]">
-              ¿Todavía no tienes cuenta?
-              <RouterLink to="/registro" class="text-[#6D28A8] hover:text-[#E52C91]">Crear cuenta</RouterLink>
-            </p>
-          </div>
+          </article>
         </section>
       </div>
     </section>
+
   </main>
 </template>
 
 <style scoped>
+.login-page {
+  isolation: isolate;
+}
+
+.blob {
+  position: absolute;
+  border-radius: 999px;
+  opacity: 0.72;
+  filter: blur(1px);
+}
+
+.blob-1 {
+  left: -8rem;
+  top: 6rem;
+  width: 22rem;
+  height: 22rem;
+  background: radial-gradient(circle, rgba(232, 60, 157, 0.16), rgba(232, 60, 157, 0));
+}
+
+.blob-2 {
+  right: -9rem;
+  bottom: 2rem;
+  width: 26rem;
+  height: 26rem;
+  background: radial-gradient(circle, rgba(116, 48, 208, 0.16), rgba(116, 48, 208, 0));
+}
+
+.blob-3 {
+  left: 52%;
+  bottom: -15rem;
+  width: 34rem;
+  height: 34rem;
+  background: radial-gradient(circle, rgba(196, 153, 255, 0.2), rgba(196, 153, 255, 0));
+}
+
+.floating-paw {
+  position: absolute;
+  width: 1.6rem;
+  opacity: 0.16;
+  filter: saturate(0.9);
+}
+
+.floating-paw-1 {
+  top: 8%;
+  left: 3.4%;
+  transform: rotate(-18deg);
+}
+
+.floating-paw-2 {
+  top: 11%;
+  left: 5.5%;
+  width: 1.25rem;
+  transform: rotate(10deg);
+}
+
+.floating-paw-3 {
+  top: 15.2%;
+  left: 3.9%;
+  width: 1.2rem;
+  transform: rotate(-8deg);
+}
+
+.floating-paw-4 {
+  top: 18%;
+  left: 6.2%;
+  width: 1rem;
+  transform: rotate(14deg);
+}
+
+.floating-paw-5 {
+  right: 3.4%;
+  bottom: 8%;
+  transform: rotate(16deg);
+}
+
+.floating-paw-6 {
+  right: 5.6%;
+  bottom: 11.2%;
+  width: 1.25rem;
+  transform: rotate(-10deg);
+}
+
+.floating-paw-7 {
+  right: 3.8%;
+  bottom: 15.5%;
+  width: 1.2rem;
+  transform: rotate(8deg);
+}
+
+.floating-paw-8 {
+  right: 6.4%;
+  bottom: 18.2%;
+  width: 1rem;
+  transform: rotate(-14deg);
+}
+
+.brand-panel::after {
+  position: absolute;
+  inset: 0 -6rem 0 auto;
+  width: 12rem;
+  content: '';
+  background: white;
+  border-radius: 50% 0 0 50%;
+  opacity: 0.86;
+}
+
+.illustration-shell {
+  position: relative;
+  display: flex;
+  min-height: 160px;
+  align-items: flex-start;
+  justify-content: center;
+  margin-top: 0.2rem;
+  padding: 0.1rem 0.5rem 0;
+  overflow: hidden;
+  transform: translateX(-30px);
+}
+
+.illustration-shell::before {
+  position: absolute;
+  left: 10%;
+  right: 14%;
+  bottom: 0;
+  height: 84%;
+  content: '';
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(236, 221, 255, 0.98), rgba(236, 221, 255, 0));
+}
+
+.login-illustration {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: min(100%, 560px);
+  max-height: 215px;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center top;
+  transform: translateX(-1.6rem);
+  filter: drop-shadow(0 16px 28px rgba(109, 80, 165, 0.14));
+}
+
+.input-shell {
+  position: relative;
+  display: flex;
+  min-height: 2.85rem;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #d9c7ea;
+  border-radius: 1rem;
+  background: #fff;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.input-shell:focus-within {
+  border-color: #8d55c7;
+  box-shadow: 0 0 0 4px rgba(141, 85, 199, 0.12);
+}
+
+.input-shell--error {
+  border-color: #f5a1b4;
+}
+
+.input-shell--error:focus-within {
+  border-color: #ef5f80;
+  box-shadow: 0 0 0 4px rgba(239, 95, 128, 0.12);
+}
+
+.input-icon {
+  display: grid;
+  min-height: 2.85rem;
+  width: 2.85rem;
+  place-items: center;
+  background: #f2e9ff;
+  color: #7d45c5;
+}
+
+.input-field {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  padding: 0 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #24113f;
+  outline: none;
+}
+
+.input-field::placeholder {
+  color: #a79ab8;
+}
+
+.error-text {
+  margin-top: 0.35rem;
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.button-paw {
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+/* Perrito encima del botón */
+.dog-strip {
+  display: flex;
+  height: 3.9rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
 .dog-scene {
   position: relative;
-  height: 58px;
-  overflow: hidden;
-  --dog-start: 6px;
-  --dog-near-door: calc(100% - 118px);
-  --dog-door-front: calc(100% - 88px);
-  --dog-inside-door: calc(100% - 66px);
-}
-
-.dog-scene__track {
-  position: absolute;
-  left: 8px;
-  right: 38px;
-  bottom: 9px;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(109, 40, 168, 0.12), rgba(109, 40, 168, 0.36), rgba(109, 40, 168, 0.04));
-}
-
-.dog-runner {
-  position: absolute;
-  bottom: 6px;
-  left: var(--dog-start);
-  z-index: 2;
-  display: flex;
-  width: 60px;
-  height: 38px;
-  transform-origin: center bottom;
-  align-items: end;
-  justify-content: center;
-}
-
-.dog-runner.walking {
-  animation: dog-walk-position 0.72s ease-in-out infinite alternate;
-}
-
-.dog-runner.entering {
-  animation: dog-enter-door 0.78s cubic-bezier(0.18, 0.9, 0.2, 1) forwards;
-}
-
-.dog-runner.rejecting {
-  animation: dog-reject-door 0.74s cubic-bezier(0.28, 0.9, 0.24, 1) forwards;
-}
-
-.dog-runner__image {
-  display: block;
   width: 100%;
+  height: 3.45rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(248, 242, 255, 0.96), rgba(255, 255, 255, 0.5));
+  box-shadow: inset 0 0 0 1px rgba(222, 206, 244, 0.65);
+}
+
+.dog-track {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0.55rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(214, 191, 241, 0.08),
+    rgba(193, 159, 236, 0.58),
+    rgba(214, 191, 241, 0.08)
+  );
+}
+
+.running-dog {
+  position: absolute;
+  left: 0.95rem;
+  bottom: 0.28rem;
+  z-index: 5;
+  width: 3.25rem;
   height: auto;
-  filter: drop-shadow(0 5px 8px rgba(44, 11, 73, 0.2));
+  opacity: 1;
+  transform: scale(1);
+  filter: drop-shadow(0 6px 10px rgba(79, 36, 133, 0.16));
+  pointer-events: none;
+}
+
+.running-dog--entering {
+  animation: dog-enter 1.25s ease-in-out forwards;
 }
 
 .dog-door {
   position: absolute;
-  right: 4px;
-  bottom: 4px;
+  right: 0.85rem;
+  bottom: 0.18rem;
   z-index: 3;
-  width: 56px;
-  height: 44px;
+  width: 2.9rem;
+  height: 2.55rem;
+  overflow: visible;
+  border: 2px solid #b48ae4;
+  border-radius: 1rem 1rem 0.35rem 0.35rem;
+  background: linear-gradient(180deg, #e7d3ff, #d7bbf6);
+  box-shadow: 0 8px 18px rgba(125, 69, 197, 0.08);
 }
 
-.dog-door__opening {
+.dog-door-inner {
   position: absolute;
-  right: 6px;
-  bottom: 3px;
-  z-index: 1;
-  width: 34px;
-  height: 36px;
-  border-radius: 12px 12px 4px 4px;
-  background: linear-gradient(180deg, rgba(28, 16, 40, 0.28), rgba(20, 12, 28, 0.82));
+  inset: 0.22rem;
+  overflow: hidden;
+  border-radius: 0.75rem 0.75rem 0.2rem 0.2rem;
+  background: linear-gradient(180deg, rgba(124, 66, 195, 0.22), rgba(81, 33, 139, 0.45));
 }
 
-.dog-door__panel {
+.dog-door-inner::after {
   position: absolute;
-  right: 8px;
-  bottom: 3px;
-  z-index: 4;
-  width: 28px;
-  height: 36px;
-  transform-origin: right center;
-  border-radius: 12px 12px 4px 4px;
-  background: linear-gradient(180deg, #f8f3ff 0%, #ede4f7 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(81, 73, 128, 0.12),
-    inset -4px 0 10px rgba(81, 73, 128, 0.08);
-}
-
-.dog-door__panel::before {
-  position: absolute;
-  inset: 4px;
+  inset: -40%;
   content: '';
-  border: 1px solid rgba(81, 73, 128, 0.1);
-  border-radius: 9px 9px 3px 3px;
-}
-
-.dog-door__panel::after {
-  position: absolute;
-  left: -2px;
-  top: 6px;
-  width: 3px;
-  height: 24px;
-  content: '';
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(81, 73, 128, 0.75), rgba(81, 73, 128, 0.25));
-}
-
-.dog-door__panel-line {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  height: 1px;
-  background: rgba(81, 73, 128, 0.14);
-}
-
-.dog-door__panel-line--top {
-  top: 12px;
-}
-
-.dog-door__panel-line--mid {
-  top: 20px;
-}
-
-.dog-door__frame {
-  position: absolute;
-  inset: 0;
-  z-index: 5;
-  pointer-events: none;
-  border-radius: 14px 14px 5px 5px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.08));
-  box-shadow:
-    inset 0 0 0 2px rgba(109, 40, 168, 0.1),
-    0 6px 14px rgba(28, 16, 40, 0.12);
-}
-
-.dog-door__knob {
-  position: absolute;
-  left: 6px;
-  top: 18px;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #f6c46a, #a96e12);
-  box-shadow: 0 0 0 1px rgba(120, 77, 12, 0.16);
-}
-
-.dog-door__light {
-  position: absolute;
-  left: -18px;
-  top: 50%;
-  z-index: 2;
-  width: 18px;
-  height: 24px;
-  opacity: 0.45;
-  filter: blur(1px);
-  transform: translateY(-50%);
-  background: radial-gradient(circle at left center, rgba(109, 40, 168, 0.18), rgba(255, 255, 255, 0));
-}
-
-.dog-door__paw {
-  position: absolute;
-  left: -3px;
-  top: -8px;
-  z-index: 6;
-  width: 18px;
-  height: 18px;
-  color: rgba(229, 44, 145, 0.65);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(232, 198, 255, 0.4), rgba(232, 198, 255, 0));
   opacity: 0;
-  pointer-events: none;
-  transform: scale(0.6) rotate(-10deg);
+  transform: scale(0.5);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
 }
 
-.dog-door__paw-icon {
-  display: block;
-  width: 100%;
-  height: 100%;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.12));
+.dog-door-inner--active::after {
+  opacity: 1;
+  transform: scale(1);
+  animation: door-glow 1.25s ease-in-out forwards;
 }
 
-.dog-door--hover .dog-door__panel {
-  transform: perspective(140px) rotateY(-14deg);
+.dog-door-panel {
+  position: absolute;
+  inset: 0.08rem;
+  border: 1px solid rgba(141, 85, 199, 0.55);
+  border-radius: 0.82rem 0.82rem 0.24rem 0.24rem;
+  background: linear-gradient(180deg, #f4ebff, #dfc8f9);
+  transform-origin: right center;
+  transition: transform 0.42s ease;
+  box-shadow: inset -6px 0 0 rgba(141, 85, 199, 0.08);
 }
 
-.dog-door--active .dog-door__panel {
-  animation: door-open 0.72s cubic-bezier(0.2, 0.9, 0.25, 1) forwards;
+.dog-door-panel--open {
+  transform: perspective(240px) rotateY(74deg);
 }
 
-.dog-door--active .dog-door__light {
-  width: 30px;
-  opacity: 0.95;
+.dog-door-knob {
+  position: absolute;
+  left: 0.36rem;
+  top: 1rem;
+  width: 0.3rem;
+  height: 0.3rem;
+  border-radius: 999px;
+  background: #7d45c5;
 }
 
-.dog-door--reject .dog-door__panel {
-  animation: door-reject 0.58s cubic-bezier(0.35, 0.85, 0.3, 1) 0.02s both;
+.separator-paw {
+  width: 0.9rem;
+  height: 0.9rem;
+  object-fit: contain;
+  opacity: 0.36;
 }
 
-.dog-door--reject .dog-door__opening {
-  animation: opening-pulse 0.46s ease-out 0.04s both;
+
+.feature-icon {
+  display: grid;
+  min-width: 3.95rem;
+  width: 3.95rem;
+  height: 3.95rem;
+  place-items: center;
+  border-radius: 1.2rem;
+  background: linear-gradient(135deg, #f6efff, #fff5fb);
+  box-shadow: inset 0 0 0 1px rgba(141, 85, 199, 0.08);
+  transition: transform 0.2s ease;
 }
 
-.dog-door--reject .dog-door__light {
-  opacity: 0.18;
+.feature-card:hover .feature-icon {
+  transform: scale(1.04) rotate(-2deg);
 }
 
-.dog-door--reject .dog-door__paw {
-  animation: paw-stamp 0.56s cubic-bezier(0.2, 0.9, 0.22, 1) 0.08s both;
-}
-
-@keyframes dog-walk-position {
+@keyframes dog-enter {
   0% {
-    transform: translateX(0);
-  }
-
-  100% {
-    transform: translateX(8px);
-  }
-}
-
-@keyframes dog-enter-door {
-  0% {
-    left: var(--dog-start);
-    transform: translateY(0) scale(1);
+    left: 0.95rem;
+    transform: scale(1);
     opacity: 1;
   }
 
-  62% {
-    left: var(--dog-near-door);
-    transform: translateY(0) scale(1);
+  58% {
+    left: calc(100% - 8.7rem);
+    transform: scale(1);
     opacity: 1;
   }
 
-  82% {
-    left: var(--dog-door-front);
-    transform: translateY(0) scale(0.76);
-    opacity: 1;
-  }
-
-  100% {
-    left: var(--dog-inside-door);
-    transform: translateY(0) scale(0.44);
-    opacity: 0;
-  }
-}
-
-@keyframes dog-reject-door {
-  0% {
-    left: var(--dog-start);
-    transform: scaleX(1);
-    opacity: 1;
-  }
-
-  38% {
-    left: calc(100% - 145px);
-    transform: scaleX(1);
-    opacity: 1;
-  }
-
-  50% {
-    left: calc(100% - 145px);
-    transform: scaleX(-1);
-    opacity: 1;
-  }
-
-  100% {
-    left: var(--dog-start);
-    transform: scaleX(-1);
-    opacity: 1;
-  }
-}
-
-@keyframes door-open {
-  0% {
-    transform: perspective(140px) rotateY(-14deg);
-  }
-
-  100% {
-    transform: perspective(140px) rotateY(-72deg);
-  }
-}
-
-@keyframes door-reject {
-  0% {
-    transform: perspective(140px) rotateY(-8deg);
-  }
-
-  30% {
-    transform: perspective(140px) rotateY(-20deg);
-  }
-
-  55% {
-    transform: perspective(140px) rotateY(-6deg);
-  }
-
-  80% {
-    transform: perspective(140px) rotateY(-14deg);
-  }
-
-  100% {
-    transform: perspective(140px) rotateY(-10deg);
-  }
-}
-
-@keyframes opening-pulse {
-  0% {
-    filter: brightness(1);
-  }
-
-  50% {
-    filter: brightness(0.75);
-  }
-
-  100% {
-    filter: brightness(1);
-  }
-}
-
-@keyframes paw-stamp {
-  0% {
-    opacity: 0;
-    transform: translate(-2px, -4px) scale(0.45) rotate(-16deg);
-  }
-
-  55% {
-    opacity: 1;
-    transform: translate(0, 0) scale(1.02) rotate(0deg);
-  }
-
-  100% {
-    opacity: 0;
-    transform: translate(1px, 2px) scale(0.96) rotate(6deg);
-  }
-}
-
-@media (max-width: 460px) {
-  .dog-runner {
-    width: 52px;
-  }
-
-  .dog-door {
-    right: 0;
+  78% {
+    left: calc(100% - 6.55rem);
     transform: scale(0.92);
-    transform-origin: right bottom;
+    opacity: 1;
   }
 
-  .dog-scene {
-    --dog-near-door: calc(100% - 105px);
-    --dog-door-front: calc(100% - 78px);
-    --dog-inside-door: calc(100% - 58px);
+  92% {
+    left: calc(100% - 5.35rem);
+    transform: scale(0.55);
+    opacity: 1;
+  }
+
+  100% {
+    left: calc(100% - 4.75rem);
+    transform: scale(0.18);
+    opacity: 0;
+  }
+}
+
+@keyframes door-glow {
+  0% {
+    opacity: 0;
+    transform: scale(0.45);
+  }
+
+  28% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  72% {
+    opacity: 0.75;
+    transform: scale(1.08);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+@media (max-width: 1023px) {
+  .brand-panel {
+    display: none;
+  }
+
+  .floating-paw-1,
+  .floating-paw-2,
+  .floating-paw-3,
+  .floating-paw-4 {
+    left: 2%;
+  }
+
+  .floating-paw-5,
+  .floating-paw-6,
+  .floating-paw-7,
+  .floating-paw-8 {
+    right: 2%;
+  }
+
+  .login-illustration {
+    transform: translateX(-0.8rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .feature-card .flex {
+    align-items: flex-start;
+  }
+
+  .feature-icon {
+    min-width: 3.8rem;
+    width: 3.8rem;
+    height: 3.8rem;
+  }
+
+  .running-dog {
+    width: 3rem;
+  }
+
+  @keyframes dog-enter {
+    0% {
+      left: 0.8rem;
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    58% {
+      left: calc(100% - 8rem);
+      transform: scale(1);
+      opacity: 1;
+    }
+
+    78% {
+      left: calc(100% - 6.4rem);
+      transform: scale(0.92);
+      opacity: 1;
+    }
+
+    92% {
+      left: calc(100% - 5.3rem);
+      transform: scale(0.55);
+      opacity: 1;
+    }
+
+    100% {
+      left: calc(100% - 4.7rem);
+      transform: scale(0.18);
+      opacity: 0;
+    }
   }
 }
 </style>

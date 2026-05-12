@@ -1,12 +1,20 @@
 import { defineStore } from 'pinia'
-import { mockUsersSeed } from '@/mocks/authUsers'
-
-const AUTH_STORAGE_KEY = 'ladralab_auth_session'
-const USERS_STORAGE_KEY = 'ladralab_mock_users'
+import {
+  login as loginRequest,
+  register as registerRequest,
+  logout as logoutRequest,
+  getSession as getStoredSession,
+  getCurrentUser,
+} from '@/services/authService'
 
 function normalizeRole(role) {
-  if (role === 'client') return 'cliente'
-  return role
+  const value = String(role || '').trim().toLowerCase()
+
+  if (['client', 'customer', 'cliente'].includes(value)) return 'cliente'
+  if (['staff', 'employee', 'worker'].includes(value)) return 'staff'
+  if (['admin', 'administrator', 'superadmin'].includes(value)) return 'admin'
+
+  return null
 }
 
 function normalizeUser(user) {
@@ -14,33 +22,21 @@ function normalizeUser(user) {
 
   return {
     ...user,
-    role: normalizeRole(user.role),
+    role: normalizeRole(user.role ?? user.type) || 'cliente',
   }
-}
-
-function sanitizeUser(user) {
-  if (!user) return null
-
-  const normalizedUser = normalizeUser(user)
-  const { password, ...safeUser } = normalizedUser
-
-  return safeUser
-}
-
-function getSeedUsers() {
-  return JSON.parse(JSON.stringify(mockUsersSeed)).map(normalizeUser)
 }
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     token: null,
-    users: [],
     hasHydrated: false,
+    isLoading: false,
   }),
 
   getters: {
-    isAuthenticated: (state) => !!state.user && !!state.token,
+    isAuthenticated: (state) => Boolean(state.user && state.token),
+
     role: (state) => state.user?.role ?? null,
 
     roleLabel: (state) => {
@@ -58,49 +54,40 @@ export const useAuthStore = defineStore('auth', {
     hydrate() {
       if (this.hasHydrated) return
 
-      const savedUsers = localStorage.getItem(USERS_STORAGE_KEY)
-      this.users = savedUsers
-        ? JSON.parse(savedUsers).map(normalizeUser)
-        : getSeedUsers()
+      const session = getStoredSession()
 
-      const savedSession = localStorage.getItem(AUTH_STORAGE_KEY)
-
-      if (savedSession) {
-        const session = JSON.parse(savedSession)
-        this.user = normalizeUser(session.user ?? null)
-        this.token = session.token ?? null
+      if (session?.token && session?.user) {
+        this.token = session.token
+        this.user = normalizeUser(session.user)
+      } else {
+        this.user = null
+        this.token = null
       }
 
-      this.persistUsers()
-      this.persistSession()
       this.hasHydrated = true
     },
 
-    persistUsers() {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(this.users))
-    },
-
-    persistSession() {
-      localStorage.setItem(
-        AUTH_STORAGE_KEY,
-        JSON.stringify({
-          user: this.user,
-          token: this.token,
-        }),
-      )
+    setSession(session) {
+      this.token = session?.token ?? null
+      this.user = normalizeUser(session?.user ?? null)
     },
 
     clearSession() {
       this.user = null
       this.token = null
-      localStorage.removeItem(AUTH_STORAGE_KEY)
+      localStorage.removeItem('ladralab_auth_session')
     },
 
     hasRole(allowedRoles = []) {
       if (!allowedRoles.length) return true
       if (!this.user) return false
 
-      return allowedRoles.includes(this.user.role)
+      const currentRole = normalizeRole(this.user.role)
+      const normalizedAllowedRoles = allowedRoles
+        .map((role) => normalizeRole(role))
+        .filter(Boolean)
+
+      return normalizedAllowedRoles.includes(currentRole)
     },
 
     getDefaultRouteByRole(role = this.user?.role) {
@@ -117,97 +104,68 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async login({ email, password }) {
-      this.hydrate()
+      this.isLoading = true
 
-      const normalizedEmail = email.trim().toLowerCase()
+      try {
+        const session = await loginRequest({
+          email,
+          password,
+        })
 
-      // FUTURO API:
-      // const response = await api.post('/api/auth/login', { email, password })
-      // this.user = response.data.user
-      // this.token = response.data.token
+        this.setSession(session)
 
-      const foundUser = this.users.find(
-        (user) => user.email.toLowerCase() === normalizedEmail,
-      )
-
-      if (!foundUser) {
-        throw new Error('No existe ninguna cuenta con ese correo.')
+        return this.user
+      } finally {
+        this.isLoading = false
       }
-
-      if (foundUser.password !== password) {
-        throw new Error('La contraseña no es correcta.')
-      }
-
-      if (!foundUser.is_active) {
-        throw new Error('Tu cuenta está inactiva. Contacta con el centro.')
-      }
-
-      this.user = sanitizeUser(foundUser)
-      this.token = `mock-token-${foundUser.id}-${Date.now()}`
-      this.persistSession()
-
-      return this.user
     },
 
-    async register({ name, email, password, password_confirmation }) {
-      this.hydrate()
+    async register({
+      name,
+      email,
+      phone,
+      password,
+      password_confirmation,
+    }) {
+      this.isLoading = true
 
-      const normalizedEmail = email.trim().toLowerCase()
+      try {
+        const session = await registerRequest({
+          name,
+          email,
+          phone,
+          password,
+          password_confirmation,
+        })
 
-      if (!name.trim()) {
-        throw new Error('El nombre es obligatorio.')
+        this.setSession(session)
+
+        return this.user
+      } finally {
+        this.isLoading = false
       }
+    },
 
-      if (!normalizedEmail) {
-        throw new Error('El email es obligatorio.')
+    async refreshUser() {
+      if (!this.token) return null
+
+      try {
+        const user = await getCurrentUser()
+        this.user = normalizeUser(user)
+
+        return this.user
+      } catch (error) {
+        this.clearSession()
+        throw error
       }
-
-      if (password.length < 8) {
-        throw new Error('La contraseña debe tener al menos 8 caracteres.')
-      }
-
-      if (password !== password_confirmation) {
-        throw new Error('Las contraseñas no coinciden.')
-      }
-
-      const exists = this.users.some(
-        (user) => user.email.toLowerCase() === normalizedEmail,
-      )
-
-      if (exists) {
-        throw new Error('Ese email ya está registrado.')
-      }
-
-      // FUTURO API:
-      // await api.post('/api/auth/register', {
-      //   name,
-      //   email,
-      //   password,
-      //   password_confirmation,
-      // })
-
-      const newUser = {
-        id: this.users.length
-          ? Math.max(...this.users.map((user) => user.id)) + 1
-          : 1,
-        name: name.trim(),
-        email: normalizedEmail,
-        password,
-        role: 'cliente',
-        is_active: true,
-      }
-
-      this.users.push(newUser)
-      this.persistUsers()
-
-      return sanitizeUser(newUser)
     },
 
     async logout() {
-      // FUTURO API:
-      // await api.post('/api/auth/logout')
-
-      this.clearSession()
+      try {
+        await logoutRequest()
+      } finally {
+        this.clearSession()
+      }
     },
   },
 })

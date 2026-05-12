@@ -144,9 +144,9 @@
                     class="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#EAE9EF] to-[#D7CBE7] text-lg font-bold text-[#514980]"
                   >
                     <img
-                      v-if="nextReservation.pet?.photo_path"
-                      :src="nextReservation.pet.photo_path"
-                      :alt="nextReservation.pet.name"
+                      v-if="getReservationPetImage(nextReservation)"
+                      :src="getReservationPetImage(nextReservation)"
+                      :alt="nextReservation.pet?.name || 'Mascota'"
                       class="h-full w-full object-cover"
                     />
                     <span v-else>{{ (nextReservation.pet?.name || 'M').charAt(0) }}</span>
@@ -165,22 +165,25 @@
                     </div>
 
                     <p class="mt-1 text-sm text-slate-500">
-                      {{ nextReservation.service_name || 'Servicio' }}
+                      {{ getReservationServiceName(nextReservation) }}
                     </p>
                   </div>
                 </div>
 
                 <div class="flex flex-wrap gap-3">
                   <RouterLink
-                    v-if="nextReservation.pet?.id"
-                    :to="{ name: 'my-pet-detail', params: { id: nextReservation.pet.id } }"
+                    v-if="nextReservation.pet_id"
+                    :to="{ name: 'my-pet-detail', params: { id: nextReservation.pet_id } }"
                     class="inline-flex h-11 items-center justify-center rounded-2xl border border-[#E4D6F3] bg-white px-5 text-sm font-semibold text-[#5A208E] transition hover:bg-[#FAF5FF]"
                   >
                     Ver ficha
                   </RouterLink>
 
                   <RouterLink
-                    :to="{ name: 'my-reservations' }"
+                    :to="{
+                      name: 'my-reservations',
+                      query: nextReservation?.pet_id ? { pet: nextReservation.pet_id } : {},
+                    }"
                     class="inline-flex h-11 items-center justify-center rounded-2xl bg-[#5A208E] px-5 text-sm font-semibold text-white transition hover:bg-[#4B1A77]"
                   >
                     Ver reservas
@@ -301,8 +304,8 @@
                     class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#EAE9EF] to-[#D7CBE7] text-base font-bold text-[#514980]"
                   >
                     <img
-                      v-if="pet.photo_path"
-                      :src="pet.photo_path"
+                      v-if="getPetImage(pet)"
+                      :src="getPetImage(pet)"
                       :alt="pet.name"
                       class="h-full w-full object-cover"
                     />
@@ -362,9 +365,9 @@
                     class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#EAE9EF] to-[#D7CBE7] text-sm font-bold text-[#514980]"
                   >
                     <img
-                      v-if="report.pet?.photo_path || report.pet?.photo_preview"
-                      :src="report.pet.photo_path || report.pet.photo_preview"
-                      :alt="report.pet.name"
+                      v-if="getReportPetImage(report)"
+                      :src="getReportPetImage(report)"
+                      :alt="report.pet?.name || 'Mascota'"
                       class="h-full w-full object-cover"
                     />
                     <span v-else>{{ (report.pet?.name || 'M').charAt(0) }}</span>
@@ -398,7 +401,7 @@
                   <img
                     v-for="image in report.media.slice(0, 2)"
                     :key="image.id || image.file_path || image.url"
-                    :src="image.file_path || image.url"
+                    :src="getMediaUrl(image)"
                     :alt="image.name || 'Imagen del seguimiento'"
                     class="h-16 w-16 rounded-2xl object-cover"
                   />
@@ -435,9 +438,11 @@ import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getMyPets } from '@/services/petsService'
 import { getMyReservations } from '@/services/reservationsService'
+import { getReservationDailyLogs } from '@/services/dailyLogsService'
 import { getReadableErrorMessage } from '@/utils/errorMessages'
 
 const authStore = useAuthStore()
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const dashboardMessages = {
   errors: {
@@ -450,6 +455,7 @@ const loadError = ref('')
 
 const pets = ref([])
 const reservations = ref([])
+const reports = ref([])
 
 onMounted(() => {
   loadDashboard()
@@ -467,8 +473,30 @@ async function loadDashboard() {
 
     pets.value = Array.isArray(petsData) ? petsData : []
     reservations.value = Array.isArray(reservationsData) ? reservationsData : []
+
+    const reportsByReservation = await Promise.all(
+      reservations.value.map(async (reservation) => {
+        try {
+          const reservationReports = await getReservationDailyLogs(reservation.id)
+
+          return reservationReports.map((report) =>
+            normalizeReportFromReservation(report, reservation),
+          )
+        } catch (error) {
+          console.warn(
+            `No se pudieron cargar los seguimientos de la reserva ${reservation.id}`,
+            error,
+          )
+
+          return []
+        }
+      }),
+    )
+
+    reports.value = reportsByReservation.flat()
   } catch (error) {
     console.error(error)
+
     loadError.value = getReadableErrorMessage(
       error,
       dashboardMessages.errors.load,
@@ -478,26 +506,22 @@ async function loadDashboard() {
   }
 }
 
-function getStoredUser() {
+function getStoredSessionUser() {
   try {
-    const possibleKeys = ['ladralab_auth_user', 'auth_user', 'user']
+    const rawSession = localStorage.getItem('ladralab_auth_session')
 
-    for (const key of possibleKeys) {
-      const raw = localStorage.getItem(key)
-      if (!raw) continue
+    if (!rawSession) return null
 
-      const parsed = JSON.parse(raw)
-      if (parsed?.id) return parsed
-    }
+    const session = JSON.parse(rawSession)
+
+    return session?.user || null
   } catch {
     return null
   }
-
-  return null
 }
 
 const currentUser = computed(() => {
-  return authStore?.user || authStore?.currentUser || getStoredUser() || {}
+  return authStore?.user || getStoredSessionUser() || {}
 })
 
 const firstName = computed(() => {
@@ -509,12 +533,19 @@ const enrichedReservations = computed(() => {
   return reservations.value.map((reservation) => {
     const pet =
       reservation.pet ||
-      pets.value.find((item) => item.id === reservation.pet_id) ||
+      pets.value.find((item) => Number(item.id) === Number(reservation.pet_id)) ||
       null
 
     return {
       ...reservation,
       pet,
+      pet_id: reservation.pet_id ?? reservation.pet?.id ?? pet?.id ?? null,
+      service_name: getReservationServiceName(reservation),
+      daily_reports: Array.isArray(reservation.daily_reports)
+        ? reservation.daily_reports
+        : Array.isArray(reservation.dailyReports)
+          ? reservation.dailyReports
+          : [],
     }
   })
 })
@@ -528,19 +559,35 @@ function reservationTiming(reservation) {
 
   if (start <= now && end >= now) return 'today'
   if (start > now) return 'upcoming'
+
   return 'past'
 }
 
 const upcomingReservations = computed(() => {
   return [...enrichedReservations.value]
     .filter((reservation) => {
-      return ['pending', 'confirmed'].includes(reservation.status) && reservationTiming(reservation) !== 'past'
+      return (
+        ['pending', 'confirmed'].includes(reservation.status) &&
+        reservationTiming(reservation) !== 'past'
+      )
     })
-    .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+    .sort((a, b) => {
+      return new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+    })
 })
 
 const nextReservation = computed(() => {
   return upcomingReservations.value[0] || null
+})
+
+const visibleReports = computed(() => {
+  return reports.value
+    .filter(isVisibleForClient)
+    .sort((a, b) => dateTimeValue(b.report_date) - dateTimeValue(a.report_date))
+})
+
+const recentReports = computed(() => {
+  return visibleReports.value.slice(0, 3)
 })
 
 const heroCards = computed(() => [
@@ -560,7 +607,9 @@ const heroCards = computed(() => [
   },
   {
     label: 'Hoy en el centro',
-    value: enrichedReservations.value.filter((reservation) => reservationTiming(reservation) === 'today').length,
+    value: enrichedReservations.value.filter((reservation) => {
+      return reservationTiming(reservation) === 'today'
+    }).length,
     help: 'Estancias activas hoy.',
     icon: '03',
     iconClass: 'bg-emerald-100 text-emerald-700',
@@ -578,8 +627,15 @@ const petsPreview = computed(() => {
   return pets.value
     .map((pet) => {
       const petUpcoming = [...enrichedReservations.value]
-        .filter((reservation) => reservation.pet?.id === pet.id && reservationTiming(reservation) !== 'past')
-        .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())[0]
+        .filter((reservation) => {
+          return (
+            Number(reservation.pet_id) === Number(pet.id) &&
+            reservationTiming(reservation) !== 'past'
+          )
+        })
+        .sort((a, b) => {
+          return new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+        })[0]
 
       return {
         ...pet,
@@ -591,35 +647,6 @@ const petsPreview = computed(() => {
     .slice(0, 3)
 })
 
-const recentReservations = computed(() => {
-  return [...enrichedReservations.value]
-    .sort((a, b) => new Date(b.created_at || b.start_at).getTime() - new Date(a.created_at || a.start_at).getTime())
-    .slice(0, 3)
-})
-
-const visibleReports = computed(() => {
-  return enrichedReservations.value
-    .flatMap((reservation) => {
-      return getReservationReports(reservation)
-        .filter(isVisibleForClient)
-        .map((report) => ({
-          ...report,
-          reservation,
-          reservation_id: report.reservation_id || reservation.id,
-          pet_id: report.pet_id || reservation.pet?.id || reservation.pet_id,
-          pet: reservation.pet,
-          service_name: report.service_name || reservation.service_name || reservation.service?.name || 'Seguimiento diario',
-          report_date: normalizeDateKey(report.report_date || report.published_at || report.completed_at || reservation.start_at),
-          media: normalizeReportMedia(report),
-        }))
-    })
-    .sort((a, b) => dateTimeValue(b.report_date) - dateTimeValue(a.report_date))
-})
-
-const recentReports = computed(() => {
-  return visibleReports.value.slice(0, 3)
-})
-
 function reservationStatusLabel(status) {
   const labels = {
     pending: 'Pendiente',
@@ -629,17 +656,6 @@ function reservationStatusLabel(status) {
   }
 
   return labels[status] || status || 'Reserva'
-}
-
-function reservationStatusBadge(status) {
-  const classes = {
-    pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
-    confirmed: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
-    completed: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',
-    cancelled: 'bg-rose-50 text-rose-700 ring-1 ring-rose-100',
-  }
-
-  return classes[status] || 'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
 }
 
 function inferBookingMode(reservation) {
@@ -657,6 +673,7 @@ function inferBookingMode(reservation) {
 
   if (!sameDay) return 'date_range'
   if (diffMinutes > 0 && diffMinutes <= 12 * 60) return 'time_slot'
+
   return 'single_day'
 }
 
@@ -690,27 +707,47 @@ function reservationDetailLabel(reservation) {
     : 'Sin detalle horario'
 }
 
-function getReservationReports(reservation) {
-  const possibleReports =
-    reservation?.daily_reports ||
-    reservation?.dailyReports ||
-    reservation?.reports ||
-    []
+function normalizeReportFromReservation(report = {}, reservation = {}) {
+  const pet =
+    reservation.pet ||
+    pets.value.find((item) => Number(item.id) === Number(reservation.pet_id)) ||
+    null
 
-  return Array.isArray(possibleReports) ? possibleReports : []
+  return {
+    ...report,
+    id: report.id,
+    reservation_id: report.reservation_id || reservation.id,
+    reservation,
+    pet,
+    pet_id: pet?.id || reservation.pet_id || null,
+    service_name: report.service_name || getReservationServiceName(reservation),
+    report_date: normalizeDateKey(
+      report.report_date ||
+        report.published_at ||
+        report.completed_at ||
+        reservation.start_at,
+    ),
+    media: normalizeReportMedia(report),
+  }
+}
+
+function getReservationServiceName(reservation) {
+  return reservation?.service_name || reservation?.service?.name || 'Servicio'
 }
 
 function isVisibleForClient(report) {
   const status = String(report?.status || '').toLowerCase()
 
-  if (status === 'draft') return false
-  if (status === 'published' || status === 'completed') return true
+  if (report?.is_draft || status === 'draft') return false
+  if (['published', 'completed', 'complete'].includes(status)) return true
+  if (report?.published_at || report?.completed_at) return true
 
-  return Boolean(report?.published_at || report?.completed_at)
+  return Boolean(report?.summary)
 }
 
 function normalizeReportMedia(report) {
   const media = report?.media || report?.images || report?.photos || []
+
   return Array.isArray(media) ? media : []
 }
 
@@ -718,9 +755,65 @@ function buildReportLink(report) {
   return {
     name: 'my-followups',
     query: {
-      report: report.id,
+      ...(report.reservation_id ? { reservation: report.reservation_id } : {}),
+      ...(report.id ? { report: report.id } : {}),
+      ...(report.pet_id ? { pet: report.pet_id } : {}),
     },
   }
+}
+
+function getStorageUrl(value) {
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
+}
+
+function getPetImage(pet) {
+  return getStorageUrl(
+    pet?.photo_preview ||
+      pet?.photo_url ||
+      pet?.photo_path ||
+      '',
+  )
+}
+
+function getReservationPetImage(reservation) {
+  return getStorageUrl(
+    reservation?.pet_image ||
+      reservation?.pet?.photo_preview ||
+      reservation?.pet?.photo_url ||
+      reservation?.pet?.photo_path ||
+      '',
+  )
+}
+
+function getReportPetImage(report) {
+  return getPetImage(report?.pet)
+}
+
+function getMediaUrl(mediaItem) {
+  return getStorageUrl(
+    mediaItem?.url ||
+      mediaItem?.file_url ||
+      mediaItem?.file_path ||
+      mediaItem?.path ||
+      '',
+  )
 }
 
 function normalizeDateKey(value) {
@@ -728,6 +821,7 @@ function normalizeDateKey(value) {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value
 
   const date = new Date(value)
+
   if (Number.isNaN(date.getTime())) return ''
 
   return date.toISOString().slice(0, 10)
@@ -737,6 +831,7 @@ function dateTimeValue(value) {
   if (!value) return 0
 
   const time = new Date(value).getTime()
+
   return Number.isNaN(time) ? 0 : time
 }
 

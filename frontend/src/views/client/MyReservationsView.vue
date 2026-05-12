@@ -248,6 +248,7 @@
                 <option value="confirmed">Confirmadas</option>
                 <option value="pending">Pendientes</option>
                 <option value="cancelled">Canceladas</option>
+                <option value="completed">Finalizadas</option>
                 <option value="upcoming">Próximas</option>
               </select>
             </div>
@@ -298,7 +299,7 @@
                         :alt="reservation.pet_name"
                         class="h-full w-full object-cover"
                       />
-                      <span v-else>{{ reservation.pet_name.charAt(0) }}</span>
+                      <span v-else>{{ reservationInitial(reservation) }}</span>
                     </div>
 
                     <div class="min-w-0 flex-1">
@@ -316,7 +317,7 @@
                       </div>
 
                       <p class="reservation-service-title mt-2">
-                        {{ reservation.service_name }}
+                        {{ getReservationServiceName(reservation) }}
                       </p>
                     </div>
                   </div>
@@ -468,7 +469,7 @@
         </p>
 
         <h2 class="mt-1 text-xl font-bold tracking-tight text-slate-900">
-          {{ reservationToEdit.service_name }} · {{ reservationToEdit.pet_name }}
+          {{ getReservationServiceName(reservationToEdit) }} · {{ reservationToEdit.pet_name }}
         </h2>
 
         <p class="mt-3 text-sm leading-6 text-slate-500">
@@ -489,7 +490,7 @@
             :cancel-text="'Cancelar'"
             :show-cancel="true"
             reminder-title="Antes de guardar"
-            reminder-text="Revisa fechas y horario antes de guardar. Cuando conectemos el backend, aquí se enviará la actualización real."
+            reminder-text="Revisa fechas y horario antes de guardar. La reserva solo podrá modificarse mientras siga pendiente."
             @submit="confirmEditReservation"
             @cancel="closeEditModal"
           />
@@ -511,8 +512,8 @@
         </h2>
 
         <p class="mt-3 text-sm leading-6 text-slate-500">
-          {{ reservationToCancel.service_name }} para {{ reservationToCancel.pet_name }}.
-          La conexión con backend queda preparada para aplicar la cancelación real.
+          {{ getReservationServiceName(reservationToCancel) }} para {{ reservationToCancel.pet_name }}.
+          Si confirmas, la reserva pasará a estado cancelada.
         </p>
 
         <div class="mt-5 flex flex-wrap justify-end gap-3">
@@ -540,7 +541,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ReservationForm from '@/components/reservations/ReservationForm.vue'
 import {
   getMyReservations,
@@ -549,8 +550,10 @@ import {
 } from '@/services/reservationsService'
 import { getMyPets } from '@/services/petsService'
 import { getServices } from '@/services/servicesService'
-import { getReadableErrorMessage } from '@/utils/errorMessages'
+import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const reservationsMessages = uiMessages.reservations || {
   success: {
@@ -563,6 +566,9 @@ const reservationsMessages = uiMessages.reservations || {
     update: 'No se ha podido actualizar la reserva.',
   },
 }
+
+const route = useRoute()
+const router = useRouter()
 
 const reservations = ref([])
 const pets = ref([])
@@ -591,6 +597,7 @@ onMounted(() => {
 async function loadReservationsView() {
   isLoading.value = true
   loadError.value = ''
+  actionError.value = ''
 
   try {
     const [reservationsData, petsData, servicesData] = await Promise.all([
@@ -606,6 +613,7 @@ async function loadReservationsView() {
       : []
   } catch (error) {
     console.error(error)
+
     loadError.value = getReadableErrorMessage(
       error,
       reservationsMessages.errors?.load || 'No hemos podido cargar tus reservas.',
@@ -619,25 +627,39 @@ const enrichedReservations = computed(() => {
   return reservations.value.map((reservation) => {
     const pet =
       reservation?.pet ||
-      pets.value.find((item) => item.id === reservation.pet_id) ||
+      pets.value.find((item) => Number(item.id) === Number(reservation.pet_id)) ||
       null
 
     const service =
       reservation?.service ||
-      services.value.find((item) => String(item.id) === String(reservation.service_id)) ||
+      services.value.find((item) => Number(item.id) === Number(reservation.service_id)) ||
       null
+
+    const resource = reservation?.resource || null
 
     return {
       ...reservation,
       pet,
       service,
+      resource,
       pet_id: reservation.pet_id || pet?.id || null,
       pet_name: pet?.name || reservation?.pet_name || 'Mascota',
       pet_breed: pet?.breed || reservation?.pet_breed || '',
-      pet_image: pet?.photo_preview || pet?.photo_path || reservation?.pet_image || '',
-      pet_notes: pet?.care_notes || '',
+      pet_image:
+        pet?.photo_url ||
+        pet?.photo_path ||
+        pet?.photo_preview ||
+        reservation?.pet_image ||
+        '',
+      pet_notes: pet?.care_notes || reservation?.pet_notes || '',
       service_name: reservation?.service_name || service?.name || 'Servicio',
       service_id: reservation?.service_id || service?.id || null,
+      resource_name: reservation?.resource_name || resource?.name || '',
+      daily_reports: Array.isArray(reservation.daily_reports)
+        ? reservation.daily_reports
+        : Array.isArray(reservation.dailyReports)
+          ? reservation.dailyReports
+          : [],
     }
   })
 })
@@ -697,6 +719,10 @@ const hasActiveFilters = computed(() => {
   )
 })
 
+const petFilterFromQuery = computed(() => {
+  return route.query.pet ? String(route.query.pet) : 'all'
+})
+
 const filteredReservations = computed(() => {
   let items = [...enrichedReservations.value]
 
@@ -712,12 +738,19 @@ const filteredReservations = computed(() => {
     items = items.filter((item) => isUpcoming(item))
   }
 
+  if (petFilterFromQuery.value !== 'all') {
+    items = items.filter((item) => {
+      return String(item.pet_id) === String(petFilterFromQuery.value)
+    })
+  }
+
   const query = searchTerm.value.trim().toLowerCase()
+
   if (query) {
     items = items.filter((item) => {
       return (
         item.pet_name?.toLowerCase().includes(query) ||
-        item.service_name?.toLowerCase().includes(query)
+        getReservationServiceName(item).toLowerCase().includes(query)
       )
     })
   }
@@ -759,20 +792,27 @@ const reservationFormInitialData = computed(() => {
   }
 
   const reservation = reservationToEdit.value
-  const sameDay = isSameDay(reservation.start_at, reservation.end_at)
-  const service = services.value.find(
-    (item) => String(item.id) === String(reservation.service_id),
-  )
+
+  const service =
+    reservation.service ||
+    services.value.find((item) => Number(item.id) === Number(reservation.service_id)) ||
+    null
+
+  const mode = service?.booking_mode || getReservationBookingMode(reservation)
+  const startDate = formatDateInput(reservation.start_at)
+  const endDate = formatDateInput(reservation.end_at || reservation.start_at)
 
   return {
     pet_id: reservation.pet_id,
     service_id: reservation.service_id,
     pet_name: reservation.pet_name,
-    service_name: reservation.service_name,
-    booking_mode: service?.booking_mode || (sameDay ? 'single_day' : 'date_range'),
-    date: sameDay ? formatDateInput(reservation.start_at) : '',
-    start_date: sameDay ? '' : formatDateInput(reservation.start_at),
-    end_date: sameDay ? '' : formatDateInput(reservation.end_at),
+    service_name: getReservationServiceName(reservation),
+    booking_mode: mode,
+
+    date: mode === 'single_day' || mode === 'time_slot' ? startDate : '',
+    start_date: mode === 'date_range' ? startDate : '',
+    end_date: mode === 'date_range' ? endDate : '',
+
     start_time: formatTimeInput(reservation.start_at),
     end_time: formatTimeInput(reservation.end_at),
     notes: reservation.notes || reservation.observations || '',
@@ -788,6 +828,10 @@ function clearFilters() {
   searchTerm.value = ''
   statusFilter.value = 'all'
   sortOrder.value = 'closest'
+
+  if (route.query.pet) {
+    router.replace({ name: route.name, query: {} })
+  }
 }
 
 function isSameDay(startAt, endAt) {
@@ -805,6 +849,8 @@ function isSameDay(startAt, endAt) {
 
 function isUpcoming(reservation) {
   if (!reservation?.start_at) return false
+  if (reservation.status === 'cancelled' || reservation.status === 'completed') return false
+
   return new Date(reservation.start_at).getTime() > Date.now()
 }
 
@@ -823,10 +869,25 @@ function formatCompactDate(dateString) {
 
 function formatDateInput(dateString) {
   if (!dateString) return ''
-  const date = new Date(dateString)
+
+  const value = String(dateString)
+
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/)
+
+  if (match) {
+    return match[1]
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
   const year = date.getFullYear()
   const month = `${date.getMonth() + 1}`.padStart(2, '0')
   const day = `${date.getDate()}`.padStart(2, '0')
+
   return `${year}-${month}-${day}`
 }
 
@@ -839,9 +900,24 @@ function formatTime(dateString) {
 
 function formatTimeInput(dateString) {
   if (!dateString) return ''
-  const date = new Date(dateString)
+
+  const value = String(dateString)
+
+  const match = value.match(/T?(\d{2}):(\d{2})/)
+
+  if (match) {
+    return `${match[1]}:${match[2]}`
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
   const hours = `${date.getHours()}`.padStart(2, '0')
   const minutes = `${date.getMinutes()}`.padStart(2, '0')
+
   return `${hours}:${minutes}`
 }
 
@@ -857,6 +933,7 @@ function startSecondaryValue(reservation) {
   if (!isSameDay(reservation.start_at, reservation.end_at)) {
     return formatTime(reservation.start_at)
   }
+
   return ''
 }
 
@@ -873,14 +950,20 @@ function detailSecondaryValue(reservation) {
   return formatTime(reservation.end_at)
 }
 
+function getReservationServiceName(reservation) {
+  return reservation?.service_name || reservation?.service?.name || 'Servicio'
+}
+
 function reservationSummary(reservation) {
   if (reservation.summary) return reservation.summary
 
+  const serviceName = getReservationServiceName(reservation)
+
   if (isSameDay(reservation.start_at, reservation.end_at)) {
-    return `${reservation.service_name} prevista para ${formatCompactDate(reservation.start_at)}.`
+    return `${serviceName} prevista para ${formatCompactDate(reservation.start_at)}.`
   }
 
-  return `Estancia prevista para ${reservation.pet_name} con servicio de ${reservation.service_name.toLowerCase()}.`
+  return `Estancia prevista para ${reservation.pet_name} con servicio de ${serviceName.toLowerCase()}.`
 }
 
 function reservationObservations(reservation) {
@@ -893,7 +976,34 @@ function reservationObservations(reservation) {
 }
 
 function getReservationPetImage(reservation) {
-  return reservation.pet_image || ''
+  const value =
+    reservation?.pet_image ||
+    reservation?.pet?.photo_url ||
+    reservation?.pet?.photo_path ||
+    ''
+
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
+}
+
+function reservationInitial(reservation) {
+  return String(reservation?.pet_name || 'M').charAt(0).toUpperCase()
 }
 
 function reservationStatusLabel(status) {
@@ -901,6 +1011,7 @@ function reservationStatusLabel(status) {
     confirmed: 'Confirmada',
     pending: 'Pendiente',
     cancelled: 'Cancelada',
+    completed: 'Finalizada',
   }
 
   return labels[status] || 'Reservada'
@@ -911,6 +1022,7 @@ function statusBadgeClass(status) {
     confirmed: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
     pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
     cancelled: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+    completed: 'bg-violet-50 text-violet-700 ring-1 ring-violet-100',
   }
 
   return classes[status] || 'bg-[#F3ECFB] text-[#6E4FA2] ring-1 ring-[#EADDF7]'
@@ -926,20 +1038,21 @@ function petDetailRoute(reservation) {
 function newReservationRoute(reservation) {
   return {
     name: 'my-reservations-new',
-    query: reservation.pet_id ? { petId: reservation.pet_id } : {},
+    query: reservation.pet_id ? { pet: reservation.pet_id } : {},
   }
 }
 
 function canCancelReservation(reservation) {
   if (!reservation) return false
-  if (reservation.status === 'cancelled') return false
+  if (reservation.status !== 'pending') return false
+
   return new Date(reservation.start_at).getTime() > Date.now()
 }
 
 function canEditReservation(reservation) {
   if (!reservation) return false
-  if (reservation.status === 'confirmed') return false
-  if (reservation.status === 'cancelled') return false
+  if (reservation.status !== 'pending') return false
+
   return new Date(reservation.start_at).getTime() > Date.now()
 }
 
@@ -956,10 +1069,13 @@ function hasVisibleReports(reservation) {
 function isVisibleForClient(report) {
   const status = String(report?.status || '').toLowerCase()
 
-  if (status === 'draft') return false
-  if (status === 'published' || status === 'completed') return true
+  if (report?.is_draft || status === 'draft') return false
 
-  return Boolean(report?.published_at || report?.completed_at)
+  if (['published', 'completed', 'complete'].includes(status)) return true
+
+  if (report?.published_at || report?.completed_at) return true
+
+  return Boolean(report?.summary)
 }
 
 function buildReservationFollowUpsLink(reservation) {
@@ -987,17 +1103,20 @@ function bottomActionsGridClass(reservation) {
 
   if (total >= 3) return 'sm:grid-cols-3'
   if (total === 2) return 'sm:grid-cols-2'
+
   return 'grid-cols-1'
 }
 
 function openCancelModal(reservation) {
   reservationToCancel.value = reservation
   actionError.value = ''
+  successMessage.value = ''
 }
 
 function openEditModal(reservation) {
   reservationToEdit.value = reservation
   actionError.value = ''
+  successMessage.value = ''
   reservationFormErrors.value = {}
 }
 
@@ -1011,6 +1130,7 @@ async function confirmEditReservation(payload) {
 
   isSubmitting.value = true
   actionError.value = ''
+  successMessage.value = ''
   reservationFormErrors.value = {}
 
   try {
@@ -1020,7 +1140,7 @@ async function confirmEditReservation(payload) {
     )
 
     reservations.value = reservations.value.map((item) =>
-      item.id === reservationToEdit.value.id ? updatedReservation : item,
+      Number(item.id) === Number(reservationToEdit.value.id) ? updatedReservation : item,
     )
 
     successMessage.value =
@@ -1030,7 +1150,9 @@ async function confirmEditReservation(payload) {
     closeEditModal()
   } catch (error) {
     console.error(error)
-    reservationFormErrors.value = {}
+
+    reservationFormErrors.value = getValidationErrors(error)
+
     actionError.value = getReadableErrorMessage(
       error,
       reservationsMessages.errors?.update ||
@@ -1046,12 +1168,13 @@ async function confirmCancelReservation() {
 
   isSubmitting.value = true
   actionError.value = ''
+  successMessage.value = ''
 
   try {
     const cancelledReservation = await cancelReservation(reservationToCancel.value.id)
 
     reservations.value = reservations.value.map((item) =>
-      item.id === reservationToCancel.value.id ? cancelledReservation : item,
+      Number(item.id) === Number(reservationToCancel.value.id) ? cancelledReservation : item,
     )
 
     successMessage.value =
@@ -1061,6 +1184,7 @@ async function confirmCancelReservation() {
     reservationToCancel.value = null
   } catch (error) {
     console.error(error)
+
     actionError.value = getReadableErrorMessage(
       error,
       reservationsMessages.errors?.cancel ||

@@ -45,26 +45,3 @@ export const mockUsersSeed = [
   },
 ]
 
-export const demoAccesses = [
-  {
-    label: 'Cliente',
-    email: 'cliente@ladralab.test',
-    password: '12345678',
-    role: 'cliente',
-    name: 'Ana',
-  },
-  {
-    label: 'Staff',
-    email: 'staff@ladralab.test',
-    password: '12345678',
-    role: 'staff',
-    name: 'Sergio',
-  },
-  {
-    label: 'Admin',
-    email: 'admin@ladralab.test',
-    password: '12345678',
-    role: 'admin',
-    name: 'Yana',
-  },
-]

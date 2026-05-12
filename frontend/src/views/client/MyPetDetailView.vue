@@ -168,7 +168,7 @@
                     {{ currentOrUpcomingReservation ? formatShortDate(currentOrUpcomingReservation.start_at) : '—' }}
                   </p>
                   <p class="mt-4 text-sm leading-6 text-white/82">
-                    {{ currentOrUpcomingReservation?.service_name || 'Sin fecha prevista.' }}
+                    {{ currentOrUpcomingReservation ? getReservationServiceName(currentOrUpcomingReservation) : 'Sin fecha prevista.' }}
                   </p>
                 </article>
               </div>
@@ -332,7 +332,7 @@
                     <div>
                       <div class="flex flex-wrap items-center gap-2">
                         <h3 class="text-xl font-bold tracking-tight text-slate-900">
-                          {{ reservation.service_name }}
+                          {{ getReservationServiceName(reservation) }}
                         </h3>
 
                         <span
@@ -415,7 +415,7 @@
                   Resúmenes disponibles
                 </h2>
                 <p class="mt-1 text-sm text-slate-500">
-Últimos resúmenes de {{ pet.name }}.
+                  Últimos resúmenes de {{ pet.name }}.
                 </p>
               </div>
 
@@ -459,7 +459,7 @@
               v-else
               class="mt-5 rounded-[22px] bg-[#FAF8FC] p-4 text-sm leading-6 text-slate-500"
             >
-Aún no hay seguimientos disponibles para esta mascota.
+              Aún no hay seguimientos disponibles para esta mascota.
             </div>
           </aside>
         </section>
@@ -498,6 +498,7 @@ import { getReadableErrorMessage } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
 
 const route = useRoute()
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const pet = ref(null)
 const isLoading = ref(false)
@@ -543,7 +544,7 @@ const visibleReports = computed(() => {
         .map((report) => ({
           ...report,
           reservation_id: reservation.id,
-          reservation_name: reservation.service_name,
+          reservation_name: getReservationServiceName(reservation),
         })),
     )
     .sort((a, b) => new Date(b.report_date).getTime() - new Date(a.report_date).getTime())
@@ -592,10 +593,13 @@ const reservationsCountLabel = computed(() => {
 function isVisibleForClient(report) {
   const status = String(report?.status || '').toLowerCase()
 
-  if (status === 'draft') return false
-  if (status === 'published' || status === 'completed') return true
+  if (report?.is_draft || status === 'draft') return false
 
-  return Boolean(report?.published_at || report?.completed_at)
+  if (['published', 'completed', 'complete'].includes(status)) return true
+
+  if (report?.published_at || report?.completed_at) return true
+
+  return Boolean(report?.summary)
 }
 
 function buildPetFollowUpsLink(petItem) {
@@ -616,7 +620,34 @@ function buildReportFollowUpLink(report) {
 }
 
 function getPetImage(petItem) {
-  return petItem?.photo_preview || petItem?.photo_path || ''
+  const value =
+    petItem?.photo_preview ||
+    petItem?.photo_url ||
+    petItem?.photo_path ||
+    ''
+
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
+}
+
+function getReservationServiceName(reservation) {
+  return reservation?.service_name || reservation?.service?.name || 'Reserva'
 }
 
 function sizeLabel(size) {

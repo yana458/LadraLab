@@ -16,6 +16,7 @@
             {{ pet.name }} · {{ pet.breed || 'Raza no indicada' }}
           </option>
         </select>
+
         <p v-if="getFieldError('pet_id')" class="mt-2 text-xs font-medium text-red-600">
           {{ getFieldError('pet_id') }}
         </p>
@@ -36,6 +37,7 @@
             {{ service.name }}
           </option>
         </select>
+
         <p v-if="getFieldError('service_id')" class="mt-2 text-xs font-medium text-red-600">
           {{ getFieldError('service_id') }}
         </p>
@@ -67,6 +69,7 @@
             type="date"
             class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
           />
+
           <p v-if="getFieldError('start_date')" class="mt-2 text-xs font-medium text-red-600">
             {{ getFieldError('start_date') }}
           </p>
@@ -79,6 +82,7 @@
             type="date"
             class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
           />
+
           <p v-if="getFieldError('end_date')" class="mt-2 text-xs font-medium text-red-600">
             {{ getFieldError('end_date') }}
           </p>
@@ -100,6 +104,10 @@
               {{ slot.label }}
             </option>
           </select>
+
+          <p v-if="getFieldError('start_time')" class="mt-2 text-xs font-medium text-red-600">
+            {{ getFieldError('start_time') }}
+          </p>
         </label>
 
         <label class="block">
@@ -116,6 +124,10 @@
               {{ slot.label }}
             </option>
           </select>
+
+          <p v-if="getFieldError('end_time')" class="mt-2 text-xs font-medium text-red-600">
+            {{ getFieldError('end_time') }}
+          </p>
         </label>
       </div>
     </template>
@@ -128,6 +140,7 @@
           type="date"
           class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
         />
+
         <p v-if="getFieldError('date')" class="mt-2 text-xs font-medium text-red-600">
           {{ getFieldError('date') }}
         </p>
@@ -149,6 +162,7 @@
           type="date"
           class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
         />
+
         <p v-if="getFieldError('date')" class="mt-2 text-xs font-medium text-red-600">
           {{ getFieldError('date') }}
         </p>
@@ -165,6 +179,7 @@
             <option value="">
               {{ isLoadingSlots ? 'Cargando horarios...' : 'Selecciona una hora' }}
             </option>
+
             <option
               v-for="slot in slotOptions"
               :key="slot.value"
@@ -173,6 +188,7 @@
               {{ slot.label }}
             </option>
           </select>
+
           <p v-if="getFieldError('start_time')" class="mt-2 text-xs font-medium text-red-600">
             {{ getFieldError('start_time') }}
           </p>
@@ -197,6 +213,12 @@
       </p>
     </template>
 
+    <template v-else>
+      <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+        Selecciona un servicio para poder elegir la fecha y el horario de la reserva.
+      </div>
+    </template>
+
     <label class="block">
       <span class="mb-2 block text-sm font-semibold text-slate-700">Observaciones</span>
       <textarea
@@ -205,6 +227,10 @@
         class="w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
         placeholder="Añade alguna indicación útil para esta reserva."
       ></textarea>
+
+      <p v-if="getFieldError('notes')" class="mt-2 text-xs font-medium text-red-600">
+        {{ getFieldError('notes') }}
+      </p>
     </label>
 
     <div class="rounded-[22px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
@@ -236,7 +262,7 @@
       <button
         type="submit"
         class="inline-flex h-11 items-center justify-center rounded-2xl bg-[#5A208E] px-5 text-sm font-semibold text-white transition hover:bg-[#4B1A77] disabled:cursor-not-allowed disabled:opacity-60"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || isLoadingSlots"
       >
         {{ isSubmitting ? submittingText : submitText }}
       </button>
@@ -324,6 +350,7 @@ const internalErrors = reactive({
   end_date: '',
   start_time: '',
   end_time: '',
+  notes: '',
 })
 
 const slotOptions = ref([])
@@ -331,19 +358,25 @@ const isLoadingSlots = ref(false)
 
 function normalizeHourTime(value, fallback = '09:00') {
   if (!value) return fallback
-  const [hours] = value.slice(0, 5).split(':').map(Number)
-  return `${String(hours).padStart(2, '0')}:00`
+
+  const cleanValue = String(value).slice(0, 5)
+  const [hours, minutes = '00'] = cleanValue.split(':')
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 
 function parseTimeToMinutes(value) {
   if (!value) return 0
-  const [hours, minutes] = value.slice(0, 5).split(':').map(Number)
+
+  const [hours, minutes = 0] = String(value).slice(0, 5).split(':').map(Number)
+
   return (hours * 60) + minutes
 }
 
 function minutesToTime(totalMinutes) {
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
+
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 
@@ -353,9 +386,14 @@ function buildHourlyOptions(startTime, endTime, interval = 60) {
   const safeInterval = Number(interval) > 0 ? Number(interval) : 60
 
   const options = []
+
   for (let current = startMinutes; current <= endMinutes; current += safeInterval) {
     const value = minutesToTime(current)
-    options.push({ value, label: value })
+
+    options.push({
+      value,
+      label: value,
+    })
   }
 
   return options
@@ -377,7 +415,7 @@ watch(
   (value) => {
     syncForm(value || {})
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const activeServices = computed(() => {
@@ -419,106 +457,31 @@ const defaultTimeOptions = computed(() => {
 
 const endTimeOptionsForRange = computed(() => {
   const startMinutes = parseTimeToMinutes(localForm.start_time || serviceStartTime.value)
+  const sameDate =
+    localForm.start_date &&
+    localForm.end_date &&
+    localForm.start_date === localForm.end_date
 
   return defaultTimeOptions.value.filter((option) => {
-    return parseTimeToMinutes(option.value) >= startMinutes
+    const optionMinutes = parseTimeToMinutes(option.value)
+
+    return sameDate ? optionMinutes > startMinutes : optionMinutes >= startMinutes
   })
 })
 
 const durationLabel = computed(() => {
-  const duration = Number(selectedService.value?.duration_minutes || 60)
+  const duration = Number(selectedService.value?.duration_minutes || props.initialData?.duration_minutes || 60)
+
+  if (duration < 60) return `${duration} min`
+
+  if (duration % 60 === 0) {
+    const hours = duration / 60
+
+    return hours === 1 ? '1 hora' : `${hours} horas`
+  }
+
   return `${duration} min`
 })
-
-watch(
-  () => localForm.service_id,
-  () => {
-    if (props.lockPetAndService) return
-
-    localForm.date = ''
-    localForm.start_date = ''
-    localForm.end_date = ''
-    localForm.start_time = ''
-    localForm.end_time = ''
-    slotOptions.value = []
-    resetErrors()
-  }
-)
-
-watch(
-  () => bookingMode.value,
-  (mode) => {
-    if (!mode) return
-
-    if (mode === 'single_day') {
-      localForm.start_time = serviceStartTime.value
-      localForm.end_time = serviceEndTime.value
-    }
-
-    if (mode === 'date_range') {
-      if (!localForm.start_time) localForm.start_time = serviceStartTime.value
-      if (!localForm.end_time) localForm.end_time = serviceEndTime.value
-    }
-  },
-  { immediate: true }
-)
-
-watch(
-  () => localForm.start_time,
-  (value) => {
-    if (bookingMode.value === 'time_slot') {
-      const duration = Number(selectedService.value?.duration_minutes || 60)
-      localForm.end_time = value ? minutesToTime(parseTimeToMinutes(value) + duration) : ''
-      return
-    }
-
-    if (bookingMode.value === 'date_range') {
-      const startMinutes = parseTimeToMinutes(value || serviceStartTime.value)
-      const endMinutes = parseTimeToMinutes(localForm.end_time || serviceEndTime.value)
-
-      if (endMinutes < startMinutes) {
-        localForm.end_time = value
-      }
-    }
-  }
-)
-
-watch(
-  () => [localForm.service_id, localForm.date, bookingMode.value],
-  async () => {
-    if (bookingMode.value !== 'time_slot' || !localForm.service_id || !localForm.date) {
-      slotOptions.value = []
-      return
-    }
-
-    isLoadingSlots.value = true
-
-    try {
-      const fetchedSlots = await getAvailableTimeSlots(localForm.service_id, localForm.date)
-      const normalized = Array.isArray(fetchedSlots) ? fetchedSlots : []
-
-      if (
-        localForm.start_time &&
-        !normalized.some((slot) => slot.value === localForm.start_time)
-      ) {
-        normalized.unshift({
-          value: localForm.start_time,
-          label: localForm.start_time,
-        })
-      }
-
-      slotOptions.value = normalized
-    } catch (error) {
-      console.error(error)
-      slotOptions.value = localForm.start_time
-        ? [{ value: localForm.start_time, label: localForm.start_time }]
-        : []
-    } finally {
-      isLoadingSlots.value = false
-    }
-  },
-  { immediate: true }
-)
 
 const draftPayload = computed(() => {
   return {
@@ -537,15 +500,159 @@ const draftPayload = computed(() => {
 })
 
 watch(
+  () => localForm.service_id,
+  () => {
+    if (props.lockPetAndService) return
+
+    localForm.date = ''
+    localForm.start_date = ''
+    localForm.end_date = ''
+    localForm.start_time = ''
+    localForm.end_time = ''
+    slotOptions.value = []
+    resetErrors()
+  },
+)
+
+watch(
+  () => bookingMode.value,
+  (mode) => {
+    if (!mode) return
+
+    if (mode === 'single_day') {
+      localForm.start_time = serviceStartTime.value
+      localForm.end_time = serviceEndTime.value
+    }
+
+    if (mode === 'date_range') {
+      if (!localForm.start_time) localForm.start_time = serviceStartTime.value
+      if (!localForm.end_time) localForm.end_time = serviceEndTime.value
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => localForm.start_time,
+  (value) => {
+    if (bookingMode.value === 'time_slot') {
+      const duration = Number(selectedService.value?.duration_minutes || props.initialData?.duration_minutes || 60)
+      localForm.end_time = value ? minutesToTime(parseTimeToMinutes(value) + duration) : ''
+      return
+    }
+
+    if (bookingMode.value === 'date_range') {
+      const startMinutes = parseTimeToMinutes(value || serviceStartTime.value)
+      const endMinutes = parseTimeToMinutes(localForm.end_time || serviceEndTime.value)
+
+      if (endMinutes < startMinutes && localForm.start_date !== localForm.end_date) {
+        localForm.end_time = value
+      }
+
+      if (endMinutes <= startMinutes && localForm.start_date === localForm.end_date) {
+        const nextOption = endTimeOptionsForRange.value[0]
+        localForm.end_time = nextOption?.value || ''
+      }
+    }
+  },
+)
+
+watch(
+  () => [localForm.start_date, localForm.end_date],
+  () => {
+    if (bookingMode.value !== 'date_range') return
+
+    const endIsInvalid = !endTimeOptionsForRange.value.some((option) => {
+      return option.value === localForm.end_time
+    })
+
+    if (endIsInvalid) {
+      localForm.end_time = endTimeOptionsForRange.value[0]?.value || ''
+    }
+  },
+)
+
+watch(
+  () => [localForm.service_id, localForm.date, bookingMode.value],
+  async () => {
+    if (bookingMode.value !== 'time_slot' || !localForm.service_id || !localForm.date) {
+      slotOptions.value = []
+      return
+    }
+
+    isLoadingSlots.value = true
+
+    try {
+      const fetchedSlots = await getAvailableTimeSlots(localForm.service_id, localForm.date)
+      const normalized = Array.isArray(fetchedSlots) ? fetchedSlots : []
+
+      if (
+        props.mode === 'edit' &&
+        localForm.start_time &&
+        !normalized.some((slot) => slot.value === localForm.start_time)
+      ) {
+        normalized.unshift({
+          value: localForm.start_time,
+          label: `${localForm.start_time} · horario actual`,
+        })
+      }
+
+      if (
+        props.mode !== 'edit' &&
+        localForm.start_time &&
+        !normalized.some((slot) => slot.value === localForm.start_time)
+      ) {
+        localForm.start_time = ''
+        localForm.end_time = ''
+      }
+
+      slotOptions.value = normalized
+    } catch (error) {
+      console.error(error)
+
+      slotOptions.value =
+        props.mode === 'edit' && localForm.start_time
+          ? [{ value: localForm.start_time, label: `${localForm.start_time} · horario actual` }]
+          : []
+    } finally {
+      isLoadingSlots.value = false
+    }
+  },
+  { immediate: true },
+)
+
+watch(
   draftPayload,
   (value) => {
     emit('change', { ...value })
   },
-  { immediate: true, deep: true }
+  { immediate: true, deep: true },
 )
 
+function getExternalError(field) {
+  const aliases = {
+    date: ['date', 'start_at'],
+    start_date: ['start_date', 'start_at'],
+    end_date: ['end_date', 'end_at'],
+    start_time: ['start_time', 'start_at'],
+    end_time: ['end_time', 'end_at'],
+    notes: ['notes', 'observations'],
+  }
+
+  const fields = aliases[field] || [field]
+
+  for (const key of fields) {
+    const value = props.externalErrors?.[key]
+
+    if (Array.isArray(value)) return value[0]
+    if (value) return value
+  }
+
+  return ''
+}
+
 function getFieldError(field) {
-  return internalErrors[field] || props.externalErrors?.[field] || ''
+  return internalErrors[field] || getExternalError(field)
 }
 
 function resetErrors() {
@@ -556,10 +663,22 @@ function resetErrors() {
   internalErrors.end_date = ''
   internalErrors.start_time = ''
   internalErrors.end_time = ''
+  internalErrors.notes = ''
+}
+
+function validateDateRangeChronology() {
+  if (!localForm.start_date || !localForm.end_date) return true
+  if (!localForm.start_time || !localForm.end_time) return true
+
+  const start = new Date(`${localForm.start_date}T${localForm.start_time}:00`)
+  const end = new Date(`${localForm.end_date}T${localForm.end_time}:00`)
+
+  return end.getTime() > start.getTime()
 }
 
 function validate() {
   resetErrors()
+
   let isValid = true
 
   if (!localForm.pet_id) {
@@ -583,13 +702,27 @@ function validate() {
       isValid = false
     }
 
-    if (localForm.start_date && localForm.end_date && localForm.end_date < localForm.start_date) {
+    if (!localForm.start_time) {
+      internalErrors.start_time = 'Selecciona la hora de entrada.'
+      isValid = false
+    }
+
+    if (!localForm.end_time) {
+      internalErrors.end_time = 'Selecciona la hora de salida.'
+      isValid = false
+    }
+
+    if (
+      localForm.start_date &&
+      localForm.end_date &&
+      localForm.end_date < localForm.start_date
+    ) {
       internalErrors.end_date = 'La fecha de fin no puede ser anterior a la de inicio.'
       isValid = false
     }
 
-    if (!localForm.start_time || !localForm.end_time) {
-      internalErrors.end_time = 'Selecciona un horario válido.'
+    if (!validateDateRangeChronology()) {
+      internalErrors.end_time = 'La salida debe ser posterior a la entrada.'
       isValid = false
     }
   }
@@ -613,6 +746,11 @@ function validate() {
     }
   }
 
+  if (!bookingMode.value) {
+    internalErrors.service_id = 'Selecciona un servicio para continuar.'
+    isValid = false
+  }
+
   return isValid
 }
 
@@ -621,11 +759,9 @@ function buildPayload() {
     return {
       pet_id: Number(localForm.pet_id),
       service_id: Number(localForm.service_id),
-      booking_mode: bookingMode.value,
       start_at: `${localForm.start_date}T${localForm.start_time}:00`,
       end_at: `${localForm.end_date}T${localForm.end_time}:00`,
       notes: localForm.notes.trim(),
-      observations: localForm.notes.trim(),
     }
   }
 
@@ -633,30 +769,27 @@ function buildPayload() {
     return {
       pet_id: Number(localForm.pet_id),
       service_id: Number(localForm.service_id),
-      booking_mode: bookingMode.value,
       start_at: `${localForm.date}T${serviceStartTime.value}:00`,
       end_at: `${localForm.date}T${serviceEndTime.value}:00`,
       notes: localForm.notes.trim(),
-      observations: localForm.notes.trim(),
     }
   }
 
-  const duration = Number(selectedService.value?.duration_minutes || 60)
+  const duration = Number(selectedService.value?.duration_minutes || props.initialData?.duration_minutes || 60)
   const calculatedEnd = localForm.end_time || minutesToTime(parseTimeToMinutes(localForm.start_time) + duration)
 
   return {
     pet_id: Number(localForm.pet_id),
     service_id: Number(localForm.service_id),
-    booking_mode: bookingMode.value,
     start_at: `${localForm.date}T${localForm.start_time}:00`,
     end_at: `${localForm.date}T${calculatedEnd}:00`,
     notes: localForm.notes.trim(),
-    observations: localForm.notes.trim(),
   }
 }
 
 function handleSubmit() {
   if (!validate()) return
+
   emit('submit', buildPayload())
 }
 </script>

@@ -158,98 +158,98 @@
         <section class="grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_360px] xl:items-start">
           <div class="space-y-6">
             <article class="flex h-full flex-col rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm sm:p-6">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 class="text-lg font-bold tracking-tight text-slate-900">Tus datos</h2>
-                <p class="mt-1 text-sm text-slate-500">
-                  Modifica la información principal asociada a tu cuenta.
-                </p>
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 class="text-lg font-bold tracking-tight text-slate-900">Tus datos</h2>
+                  <p class="mt-1 text-sm text-slate-500">
+                    Modifica la información principal asociada a tu cuenta.
+                  </p>
+                </div>
+
+                <span
+                  class="inline-flex w-fit items-center rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#5A208E]"
+                >
+                  Cuenta
+                </span>
               </div>
 
-              <span
-                class="inline-flex w-fit items-center rounded-full bg-[#F3ECFB] px-3 py-1 text-xs font-semibold text-[#5A208E]"
-              >
-                Cuenta
-              </span>
-            </div>
+              <form class="mt-5 flex h-full flex-col" @submit.prevent="handleSubmit">
+                <div class="space-y-4">
+                  <label class="block">
+                    <span class="mb-2 block text-sm font-semibold text-slate-700">Nombre</span>
+                    <input
+                      v-model.trim="form.name"
+                      type="text"
+                      class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
+                      placeholder="Tu nombre"
+                    />
+                    <p v-if="formErrors.name" class="mt-2 text-xs font-medium text-red-600">
+                      {{ formErrors.name }}
+                    </p>
+                  </label>
 
-            <form class="mt-5 flex h-full flex-col" @submit.prevent="handleSubmit">
-              <div class="space-y-4">
-                <label class="block">
-                  <span class="mb-2 block text-sm font-semibold text-slate-700">Nombre</span>
-                  <input
-                    v-model.trim="form.name"
-                    type="text"
-                    class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
-                    placeholder="Tu nombre"
-                  />
-                  <p v-if="formErrors.name" class="mt-2 text-xs font-medium text-red-600">
-                    {{ formErrors.name }}
-                  </p>
-                </label>
+                  <label class="block">
+                    <span class="mb-2 block text-sm font-semibold text-slate-700">Email</span>
+                    <input
+                      v-model.trim="form.email"
+                      type="email"
+                      class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
+                      placeholder="Tu email"
+                    />
+                    <p v-if="formErrors.email" class="mt-2 text-xs font-medium text-red-600">
+                      {{ formErrors.email }}
+                    </p>
+                  </label>
 
-                <label class="block">
-                  <span class="mb-2 block text-sm font-semibold text-slate-700">Email</span>
-                  <input
-                    v-model.trim="form.email"
-                    type="email"
-                    class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
-                    placeholder="Tu email"
-                  />
-                  <p v-if="formErrors.email" class="mt-2 text-xs font-medium text-red-600">
-                    {{ formErrors.email }}
-                  </p>
-                </label>
+                  <label class="block">
+                    <span class="mb-2 block text-sm font-semibold text-slate-700">Teléfono</span>
+                    <input
+                      v-model.trim="form.phone"
+                      type="text"
+                      class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
+                      placeholder="Tu teléfono"
+                    />
+                    <p v-if="formErrors.phone" class="mt-2 text-xs font-medium text-red-600">
+                      {{ formErrors.phone }}
+                    </p>
+                  </label>
 
-                <label class="block">
-                  <span class="mb-2 block text-sm font-semibold text-slate-700">Teléfono</span>
-                  <input
-                    v-model.trim="form.phone"
-                    type="text"
-                    class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
-                    placeholder="Tu teléfono"
-                  />
-                  <p v-if="formErrors.phone" class="mt-2 text-xs font-medium text-red-600">
-                    {{ formErrors.phone }}
-                  </p>
-                </label>
+                  <div class="rounded-[22px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
+                    <div class="flex items-start gap-3">
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#F3ECFB] text-[#5A208E]">
+                        🐾
+                      </div>
 
-                <div class="rounded-[22px] border border-[#EEE7F6] bg-[#FCFBFE] p-4">
-                  <div class="flex items-start gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#F3ECFB] text-[#5A208E]">
-                      🐾
-                    </div>
-
-                    <div>
-                      <p class="text-sm font-semibold text-slate-900">{{ profileReminderTitle }}</p>
-                      <p class="mt-1 text-sm leading-6 text-slate-500">
-                        {{ profileReminderText }}
-                      </p>
+                      <div>
+                        <p class="text-sm font-semibold text-slate-900">{{ profileReminderTitle }}</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-500">
+                          {{ profileReminderText }}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div class="mt-auto flex flex-wrap justify-end gap-3 pt-6">
-                <button
-                  type="button"
-                  @click="resetForm"
-                  class="inline-flex h-11 items-center justify-center rounded-2xl border border-[#D9CEE8] px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]"
-                  :disabled="isSaving"
-                >
-                  Restaurar datos
-                </button>
+                <div class="mt-auto flex flex-wrap justify-end gap-3 pt-6">
+                  <button
+                    type="button"
+                    @click="resetForm"
+                    class="inline-flex h-11 items-center justify-center rounded-2xl border border-[#D9CEE8] px-4 text-sm font-semibold text-[#514980] transition hover:border-[#B9A6D8] hover:bg-[#F6F1FB]"
+                    :disabled="isSaving"
+                  >
+                    Restaurar datos
+                  </button>
 
-                <button
-                  type="submit"
-                  class="inline-flex h-11 items-center justify-center rounded-2xl bg-[#5A208E] px-5 text-sm font-semibold text-white transition hover:bg-[#4B1A77] disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="isSaving"
-                >
-                  {{ isSaving ? 'Guardando...' : 'Guardar cambios' }}
-                </button>
-              </div>
-            </form>
-          </article>
+                  <button
+                    type="submit"
+                    class="inline-flex h-11 items-center justify-center rounded-2xl bg-[#5A208E] px-5 text-sm font-semibold text-white transition hover:bg-[#4B1A77] disabled:cursor-not-allowed disabled:opacity-60"
+                    :disabled="isSaving"
+                  >
+                    {{ isSaving ? 'Guardando...' : 'Guardar cambios' }}
+                  </button>
+                </div>
+              </form>
+            </article>
 
             <article class="rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm sm:p-6">
               <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -290,7 +290,7 @@
                       type="password"
                       autocomplete="new-password"
                       class="h-12 w-full rounded-2xl border border-[#DCCFEA] bg-[#FCFBFE] px-4 text-sm text-slate-900 outline-none transition focus:border-[#862E86] focus:ring-4 focus:ring-[#862E86]/10"
-                      placeholder="Mínimo 8 caracteres"
+                      placeholder="Mínimo 6 caracteres"
                     />
                     <p v-if="passwordErrors.password" class="mt-2 text-xs font-medium text-red-600">
                       {{ passwordErrors.password }}
@@ -397,7 +397,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getReadableErrorMessage } from '@/utils/errorMessages'
+import {
+  getMyProfile,
+  updateMyProfile,
+  updateMyPassword,
+} from '@/services/profileServices'
+import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
 
 const authStore = useAuthStore()
@@ -406,10 +411,12 @@ const profileMessages = uiMessages.profile || {
   loading: 'Estamos preparando tu perfil...',
   success: {
     updated: 'Tus datos se han guardado correctamente.',
+    passwordUpdated: 'Tu contraseña se ha actualizado correctamente.',
   },
   errors: {
     load: 'No hemos podido cargar tu perfil.',
     save: 'No se pudieron guardar los cambios.',
+    password: 'No se pudo cambiar la contraseña.',
   },
 }
 
@@ -503,33 +510,6 @@ const profileReminderText = computed(() => {
     : 'Completar el teléfono puede ayudar al centro a localizarte si necesita confirmar algo.'
 })
 
-function getStoredUser() {
-  try {
-    const possibleKeys = ['ladralab_auth_user', 'auth_user', 'user']
-
-    for (const key of possibleKeys) {
-      const raw = localStorage.getItem(key)
-      if (!raw) continue
-
-      const parsed = JSON.parse(raw)
-      if (parsed?.id) {
-        return { user: parsed, storageKey: key }
-      }
-    }
-  } catch {
-    return { user: null, storageKey: null }
-  }
-
-  return { user: null, storageKey: null }
-}
-
-function getCurrentUser() {
-  if (authStore?.user?.id) return authStore.user
-  if (authStore?.currentUser?.id) return authStore.currentUser
-
-  return getStoredUser().user
-}
-
 function applyUserToForm(user) {
   form.name = user?.name || ''
   form.email = user?.email || ''
@@ -550,6 +530,18 @@ function resetPasswordErrors() {
   passwordErrors.password_confirmation = ''
 }
 
+function applyValidationErrors(target, validationErrors = {}) {
+  Object.keys(target).forEach((key) => {
+    const value = validationErrors[key]
+
+    if (Array.isArray(value)) {
+      target[key] = value[0] || ''
+    } else {
+      target[key] = value || ''
+    }
+  })
+}
+
 function clearPasswordForm() {
   resetPasswordErrors()
   actionError.value = ''
@@ -560,21 +552,23 @@ function clearPasswordForm() {
   passwordForm.password_confirmation = ''
 }
 
-function loadProfile() {
+async function loadProfile() {
   isLoading.value = true
   loadError.value = ''
   actionError.value = ''
   successMessage.value = ''
 
   try {
-    const user = getCurrentUser()
+    const user = await getMyProfile()
 
-    if (!user) {
+    if (!user?.id) {
       throw new Error('No hay usuario autenticado')
     }
 
     originalUser.value = { ...user }
     applyUserToForm(user)
+
+    updateAuthStoreUser(user)
   } catch (error) {
     console.error(error)
     loadError.value = getReadableErrorMessage(error, profileMessages.errors.load)
@@ -608,6 +602,7 @@ function validateForm() {
     isValid = false
   } else {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
     if (!emailRegex.test(form.email.trim())) {
       formErrors.email = 'Introduce un email válido.'
       isValid = false
@@ -615,27 +610,6 @@ function validateForm() {
   }
 
   return isValid
-}
-
-function persistMockUser(updatedUser) {
-  const { storageKey } = getStoredUser()
-  const keysToUpdate = storageKey ? [storageKey] : ['ladralab_auth_user']
-
-  keysToUpdate.forEach((key) => {
-    try {
-      localStorage.setItem(key, JSON.stringify(updatedUser))
-    } catch {
-      // mock local
-    }
-  })
-
-  if ('user' in authStore) {
-    authStore.user = { ...updatedUser }
-  }
-
-  if ('currentUser' in authStore) {
-    authStore.currentUser = { ...updatedUser }
-  }
 }
 
 function validatePasswordForm() {
@@ -651,8 +625,8 @@ function validatePasswordForm() {
   if (!passwordForm.password.trim()) {
     passwordErrors.password = 'Indica la nueva contraseña.'
     isValid = false
-  } else if (passwordForm.password.trim().length < 8) {
-    passwordErrors.password = 'La nueva contraseña debe tener al menos 8 caracteres.'
+  } else if (passwordForm.password.trim().length < 6) {
+    passwordErrors.password = 'La nueva contraseña debe tener al menos 6 caracteres.'
     isValid = false
   }
 
@@ -682,30 +656,29 @@ async function handlePasswordSubmit() {
   isChangingPassword.value = true
   actionError.value = ''
   successMessage.value = ''
+  resetPasswordErrors()
 
   try {
-    const currentUser = getCurrentUser()
-
-    if (!currentUser?.id) {
-      throw new Error('No hay usuario autenticado')
-    }
-
-    // TODO backend
-    // await profileService.changeMyPassword({
-    //   current_password: passwordForm.current_password.trim(),
-    //   password: passwordForm.password.trim(),
-    //   password_confirmation: passwordForm.password_confirmation.trim(),
-    // })
-    // Endpoint sugerido: PATCH /api/profile/password
+    await updateMyPassword({
+      current_password: passwordForm.current_password.trim(),
+      password: passwordForm.password.trim(),
+      password_confirmation: passwordForm.password_confirmation.trim(),
+    })
 
     clearPasswordForm()
+
     successMessage.value =
-      profileMessages.success?.passwordUpdated || 'Tu contraseña se ha actualizado correctamente.'
+      profileMessages.success?.passwordUpdated ||
+      'Tu contraseña se ha actualizado correctamente.'
   } catch (error) {
     console.error(error)
+
+    const validationErrors = getValidationErrors(error)
+    applyValidationErrors(passwordErrors, validationErrors)
+
     actionError.value = getReadableErrorMessage(
       error,
-      profileMessages.errors?.password || 'No se pudo cambiar la contraseña.'
+      profileMessages.errors?.password || 'No se pudo cambiar la contraseña.',
     )
   } finally {
     isChangingPassword.value = false
@@ -718,39 +691,54 @@ async function handleSubmit() {
   isSaving.value = true
   actionError.value = ''
   successMessage.value = ''
+  resetErrors()
 
   try {
-    const currentUser = getCurrentUser()
-
-    if (!currentUser?.id) {
-      throw new Error('No hay usuario autenticado')
-    }
-
-    const payload = {
-      ...currentUser,
+    const updatedUser = await updateMyProfile({
       name: form.name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
-      role: form.role || currentUser.role || 'client',
-      is_active: form.is_active ?? true,
-    }
+    })
 
-    // TODO backend
-    // await profileService.updateMyProfile({
-    //   name: form.name.trim(),
-    //   email: form.email.trim(),
-    //   phone: form.phone.trim(),
-    // })
+    originalUser.value = { ...updatedUser }
+    applyUserToForm(updatedUser)
+    updateAuthStoreUser(updatedUser)
 
-    persistMockUser(payload)
-    originalUser.value = { ...payload }
-    successMessage.value = profileMessages.success.updated
+    successMessage.value =
+      profileMessages.success?.updated ||
+      'Tus datos se han guardado correctamente.'
   } catch (error) {
     console.error(error)
-    actionError.value = getReadableErrorMessage(error, profileMessages.errors.save)
+
+    const validationErrors = getValidationErrors(error)
+    applyValidationErrors(formErrors, validationErrors)
+
+    actionError.value = getReadableErrorMessage(
+      error,
+      profileMessages.errors?.save || 'No se pudieron guardar los cambios.',
+    )
   } finally {
     isSaving.value = false
   }
+}
+
+function updateAuthStoreUser(user) {
+  if (!user) return
+
+  const currentUser = authStore.user || {}
+
+  authStore.user = {
+    ...currentUser,
+    ...user,
+  }
+
+  localStorage.setItem(
+    'ladralab_auth_session',
+    JSON.stringify({
+      token: authStore.token,
+      user: authStore.user,
+    }),
+  )
 }
 </script>
 

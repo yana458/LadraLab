@@ -253,6 +253,16 @@ const routes = [
       description: 'Checklist, notas y fotos del día para el tutor.',
     },
   },
+  {
+    path: '/staff/seguimientos/:reservationId',
+    name: 'staff-followup-detail',
+    component: () => import('@/views/staff/StaffFollowUpDetailView.vue'),
+    meta: {
+      layout: 'dashboard',
+      requiresAuth: true,
+      roles: ['staff', 'admin'],
+    },
+  },
 
   {
     path: '/admin/usuarios',
@@ -290,7 +300,11 @@ const routes = [
 
   {
     path: '/:pathMatch(.*)*',
-    redirect: '/',
+    name: 'not-found',
+    component: () => import('@/views/common/NotFoundView.vue'),
+    meta: {
+      layout: 'empty',
+    },
   },
 ]
 

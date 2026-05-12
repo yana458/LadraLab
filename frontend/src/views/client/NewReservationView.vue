@@ -258,7 +258,7 @@ import ReservationForm from '@/components/reservations/ReservationForm.vue'
 import { getMyPets } from '@/services/petsService'
 import { createReservation } from '@/services/reservationsService'
 import { getServices } from '@/services/servicesService'
-import { getReadableErrorMessage } from '@/utils/errorMessages'
+import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 import { uiMessages } from '@/utils/uiMessages'
 
 const route = useRoute()
@@ -266,7 +266,9 @@ const router = useRouter()
 
 const reservationMessages = uiMessages.reservations || {
   loading: 'Estamos preparando tu solicitud...',
-  success: { created: 'La solicitud se ha enviado correctamente.' },
+  success: {
+    created: 'La solicitud se ha enviado correctamente.',
+  },
   errors: {
     load: 'No hemos podido cargar los datos de la reserva.',
     save: 'No se pudo enviar la solicitud.',
@@ -307,6 +309,7 @@ async function loadData() {
   loadError.value = ''
   actionError.value = ''
   successMessage.value = ''
+  formErrors.value = {}
 
   try {
     const [petsData, servicesData] = await Promise.all([
@@ -320,6 +323,7 @@ async function loadData() {
       : []
   } catch (error) {
     console.error(error)
+
     loadError.value = getReadableErrorMessage(
       error,
       reservationMessages.errors?.load || 'No hemos podido cargar los datos de la reserva.',
@@ -329,8 +333,12 @@ async function loadData() {
   }
 }
 
+const initialPetIdFromQuery = computed(() => {
+  return route.query.pet || route.query.petId || ''
+})
+
 const reservationInitialData = computed(() => ({
-  pet_id: route.query.petId ? String(route.query.petId) : '',
+  pet_id: initialPetIdFromQuery.value ? String(initialPetIdFromQuery.value) : '',
   service_id: '',
   date: '',
   start_date: '',
@@ -445,6 +453,8 @@ const notesSummary = computed(() => {
 
 function handleReservationDraftChange(payload) {
   reservationDraft.value = { ...payload }
+  actionError.value = ''
+  formErrors.value = {}
 }
 
 function formatDisplayDate(dateString) {
@@ -459,6 +469,7 @@ function formatDisplayDate(dateString) {
   }
 
   const [year, month, day] = dateString.split('-').map(Number)
+
   return new Intl.DateTimeFormat('es-ES', {
     day: '2-digit',
     month: 'short',
@@ -477,9 +488,6 @@ async function submitReservation(payload) {
   formErrors.value = {}
 
   try {
-    // TODO backend:
-    // await createReservation(payload)
-
     await createReservation(payload)
 
     successMessage.value =
@@ -494,6 +502,9 @@ async function submitReservation(payload) {
     }, 1200)
   } catch (error) {
     console.error(error)
+
+    formErrors.value = getValidationErrors(error)
+
     actionError.value = getReadableErrorMessage(
       error,
       reservationMessages.errors?.save || 'No se pudo enviar la solicitud.',

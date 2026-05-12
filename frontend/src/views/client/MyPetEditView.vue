@@ -35,6 +35,7 @@
           <div class="animate-pulse">
             <div class="flex items-start justify-between gap-6">
               <div class="h-10 w-52 rounded bg-white/20"></div>
+
               <div class="grid w-[320px] gap-3 sm:grid-cols-2">
                 <div class="h-11 rounded-2xl bg-white/20"></div>
                 <div class="h-11 rounded-2xl bg-white/20"></div>
@@ -53,10 +54,12 @@
             <div class="animate-pulse space-y-4">
               <div class="h-12 rounded-2xl bg-[#FAF8FC]"></div>
               <div class="h-12 rounded-2xl bg-[#FAF8FC]"></div>
+
               <div class="grid gap-4 sm:grid-cols-2">
                 <div class="h-12 rounded-2xl bg-[#FAF8FC]"></div>
                 <div class="h-12 rounded-2xl bg-[#FAF8FC]"></div>
               </div>
+
               <div class="h-32 rounded-2xl bg-[#FAF8FC]"></div>
               <div class="h-20 rounded-2xl bg-[#FAF8FC]"></div>
             </div>
@@ -96,7 +99,7 @@
                 </RouterLink>
 
                 <RouterLink
-                  :to="{ name: 'my-reservations-new', query: { petId: petId } }"
+                  :to="{ name: 'my-reservations-new', query: { pet: petId } }"
                   class="inline-flex h-11 items-center justify-center rounded-2xl bg-white px-4 text-sm font-semibold text-[#5A208E] transition hover:bg-[#F8F2FF]"
                 >
                   Nueva reserva
@@ -119,7 +122,10 @@
         <section class="grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_360px] xl:items-stretch">
           <article class="flex h-full flex-col rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm sm:p-6">
             <div>
-              <h2 class="text-lg font-bold tracking-tight text-slate-900">Editar ficha</h2>
+              <h2 class="text-lg font-bold tracking-tight text-slate-900">
+                Editar ficha
+              </h2>
+
               <p class="mt-1 text-sm text-slate-500">
                 Modifica solo los datos necesarios y guarda los cambios cuando termines.
               </p>
@@ -146,7 +152,10 @@
                   </div>
 
                   <div>
-                    <p class="text-sm font-semibold text-slate-900">{{ saveReminderTitle }}</p>
+                    <p class="text-sm font-semibold text-slate-900">
+                      {{ saveReminderTitle }}
+                    </p>
+
                     <p class="mt-1 text-sm leading-6 text-slate-500">
                       {{ saveReminderText }}
                     </p>
@@ -157,7 +166,10 @@
           </article>
 
           <article class="flex h-full flex-col rounded-[28px] border border-[#E8E1F1] bg-white p-5 shadow-sm sm:p-6">
-            <h2 class="text-lg font-bold tracking-tight text-slate-900">Vista previa</h2>
+            <h2 class="text-lg font-bold tracking-tight text-slate-900">
+              Vista previa
+            </h2>
+
             <p class="mt-1 text-sm text-slate-500">
               Los cambios se reflejan aquí mientras editas.
             </p>
@@ -173,13 +185,17 @@
                     :alt="previewPet.name"
                     class="h-full w-full object-cover"
                   />
-                  <span v-else>{{ (previewPet.name || 'M').charAt(0) }}</span>
+
+                  <span v-else>
+                    {{ (previewPet.name || 'M').charAt(0) }}
+                  </span>
                 </div>
 
                 <div class="min-w-0">
                   <h3 class="truncate text-lg font-bold text-slate-900">
                     {{ previewPet.name || 'Sin nombre' }}
                   </h3>
+
                   <p class="mt-1 text-sm text-slate-500">
                     {{ previewPet.breed || 'Raza no indicada' }}
                   </p>
@@ -188,14 +204,20 @@
 
               <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 <div class="rounded-2xl bg-white p-4 ring-1 ring-[#F0E8F7]">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Tamaño</p>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Tamaño
+                  </p>
+
                   <p class="mt-1 text-sm font-semibold text-slate-800">
                     {{ sizeLabel(previewPet.size) }}
                   </p>
                 </div>
 
                 <div class="rounded-2xl bg-white p-4 ring-1 ring-[#F0E8F7]">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Edad</p>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Edad
+                  </p>
+
                   <p class="mt-1 text-sm font-semibold text-slate-800">
                     {{ ageLabel(previewPet.birth_date) }}
                   </p>
@@ -206,6 +228,7 @@
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">
                   Observaciones
                 </p>
+
                 <p class="mt-2 text-sm leading-6 text-slate-600">
                   {{ previewPet.care_notes || 'No hay observaciones añadidas en esta ficha.' }}
                 </p>
@@ -224,7 +247,11 @@
           >
             🐾
           </div>
-          <h1 class="mt-4 text-xl font-bold text-slate-900">No hemos encontrado esta ficha</h1>
+
+          <h1 class="mt-4 text-xl font-bold text-slate-900">
+            No hemos encontrado esta ficha
+          </h1>
+
           <p class="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
             Puede que la mascota ya no esté disponible o que el enlace no sea correcto.
           </p>
@@ -251,6 +278,7 @@ import { uiMessages } from '@/utils/uiMessages'
 
 const route = useRoute()
 const router = useRouter()
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 const pet = ref(null)
 const petDraft = ref({})
@@ -284,6 +312,7 @@ const initialFormData = computed(() => {
       birth_date: '',
       care_notes: '',
       photo_path: '',
+      photo_preview: '',
     }
   }
 
@@ -294,6 +323,7 @@ const initialFormData = computed(() => {
     birth_date: pet.value.birth_date || '',
     care_notes: pet.value.care_notes || '',
     photo_path: pet.value.photo_path || '',
+    photo_preview: pet.value.photo_preview || '',
   }
 })
 
@@ -324,6 +354,7 @@ async function loadPet() {
 
   try {
     pet.value = await getMyPetById(petId)
+
     petDraft.value = {
       name: pet.value?.name || '',
       breed: pet.value?.breed || '',
@@ -335,6 +366,7 @@ async function loadPet() {
     }
   } catch (error) {
     console.error(error)
+
     loadError.value = getReadableErrorMessage(
       error,
       uiMessages.pets?.errors?.load || 'No hemos podido cargar la ficha de tu mascota.',
@@ -351,6 +383,18 @@ function handleDraftChange(payload) {
   }
 }
 
+function normalizePetPayload(payload) {
+  return {
+    ...payload,
+    name: payload.name?.trim() || '',
+    breed: payload.breed?.trim() || '',
+    size: payload.size || '',
+    birth_date: payload.birth_date || null,
+    care_notes: payload.care_notes?.trim() || '',
+    photo_path: payload.photo_path || '',
+  }
+}
+
 async function handlePetFormSubmit(payload) {
   isSubmitting.value = true
   actionError.value = ''
@@ -358,12 +402,10 @@ async function handlePetFormSubmit(payload) {
   formErrors.value = {}
 
   try {
-    // TODO backend:
-    // const updatedPet = await updatePet(petId, payload)
-
-    const updatedPet = await updatePet(petId, payload)
+    const updatedPet = await updatePet(petId, normalizePetPayload(payload))
 
     pet.value = updatedPet
+
     petDraft.value = {
       name: updatedPet?.name || '',
       breed: updatedPet?.breed || '',
@@ -387,7 +429,9 @@ async function handlePetFormSubmit(payload) {
     }, 1100)
   } catch (error) {
     console.error(error)
+
     formErrors.value = getValidationErrors(error)
+
     actionError.value = getReadableErrorMessage(
       error,
       uiMessages.pets?.errors?.save || 'No se pudieron guardar los cambios de la ficha.',
@@ -402,7 +446,30 @@ function goBackToDetail() {
 }
 
 function getPetImage(petItem) {
-  return petItem?.photo_preview || petItem?.photo_path || ''
+  const value =
+    petItem?.photo_preview ||
+    petItem?.photo_url ||
+    petItem?.photo_path ||
+    ''
+
+  if (!value) return ''
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  const cleanPath = value.replace(/^\/+/, '')
+
+  if (cleanPath.startsWith('storage/')) {
+    return `${API_BASE_URL}/${cleanPath}`
+  }
+
+  return `${API_BASE_URL}/storage/${cleanPath}`
 }
 
 function sizeLabel(size) {
@@ -430,6 +497,7 @@ function ageLabel(dateString) {
 
   if (years <= 0) return 'Menos de 1 año'
   if (years === 1) return '1 año'
+
   return `${years} años`
 }
 </script>

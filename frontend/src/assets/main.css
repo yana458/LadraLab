@@ -1,0 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Caveat+Brush&display=swap');
+@import "tailwindcss";
+
+:root {
+  --ll-primary: #5A208E;
+  --ll-deep: #514980;
+  --ll-accent: #E02890;
+  --ll-secondary: #862E86;
+  --ll-soft: #EAE9EF;
+  --ll-muted: #8D80A9;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--ll-soft);
+  color: #1f2937;
+}
+
+.font-ui {
+  font-family: 'Nunito', sans-serif;
+}
+
+.font-accent {
+  font-family: 'Caveat Brush', cursive;
+}

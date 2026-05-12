@@ -31,8 +31,8 @@
           <option value="">Selecciona un servicio</option>
           <option
             v-for="service in activeServices"
-            :key="service.id"
-            :value="String(service.id)"
+            :key="getServiceId(service)"
+            :value="String(getServiceId(service))"
           >
             {{ service.name }}
           </option>
@@ -410,6 +410,56 @@ function syncForm(data = {}) {
   localForm.notes = data.notes || ''
 }
 
+function getPetId(pet = {}) {
+  return pet.id ?? pet.pet_id ?? ''
+}
+
+function getServiceId(service = {}) {
+  return service.id ?? service.service_id ?? ''
+}
+
+function findPetByValue(value) {
+  const rawValue = value ?? ''
+
+  const petById = props.pets.find((pet) => String(getPetId(pet)) === String(rawValue))
+  if (petById) return petById
+
+  const petByName = props.pets.find((pet) => String(pet.name || '') === String(rawValue))
+  return petByName || null
+}
+
+function findServiceByValue(value) {
+  const rawValue = value ?? ''
+
+  const serviceById = activeServices.value.find((service) => {
+    return String(getServiceId(service)) === String(rawValue)
+  })
+
+  if (serviceById) return serviceById
+
+  const serviceByName = activeServices.value.find((service) => {
+    return String(service.name || '') === String(rawValue)
+  })
+
+  if (serviceByName) return serviceByName
+
+  const serviceBySlug = activeServices.value.find((service) => {
+    return String(service.slug || service.key || '') === String(rawValue)
+  })
+
+  return serviceBySlug || null
+}
+
+function getSelectedPetId() {
+  const pet = selectedPet.value || findPetByValue(localForm.pet_id)
+  return Number(getPetId(pet) || localForm.pet_id)
+}
+
+function getSelectedServiceId() {
+  const service = selectedService.value || findServiceByValue(localForm.service_id)
+  return Number(getServiceId(service) || localForm.service_id)
+}
+
 watch(
   () => props.initialData,
   (value) => {
@@ -423,11 +473,11 @@ const activeServices = computed(() => {
 })
 
 const selectedPet = computed(() => {
-  return props.pets.find((pet) => String(pet.id) === String(localForm.pet_id)) || null
+  return findPetByValue(localForm.pet_id)
 })
 
 const selectedService = computed(() => {
-  return activeServices.value.find((service) => String(service.id) === String(localForm.service_id)) || null
+  return findServiceByValue(localForm.service_id)
 })
 
 const initialPetName = computed(() => props.initialData?.pet_name || '')
@@ -580,10 +630,17 @@ watch(
       return
     }
 
+    const serviceId = getSelectedServiceId()
+
+    if (!serviceId) {
+      slotOptions.value = []
+      return
+    }
+
     isLoadingSlots.value = true
 
     try {
-      const fetchedSlots = await getAvailableTimeSlots(localForm.service_id, localForm.date)
+      const fetchedSlots = await getAvailableTimeSlots(serviceId, localForm.date)
       const normalized = Array.isArray(fetchedSlots) ? fetchedSlots : []
 
       if (
@@ -757,8 +814,8 @@ function validate() {
 function buildPayload() {
   if (bookingMode.value === 'date_range') {
     return {
-      pet_id: Number(localForm.pet_id),
-      service_id: Number(localForm.service_id),
+      pet_id: getSelectedPetId(),
+      service_id: getSelectedServiceId(),
       start_at: `${localForm.start_date}T${localForm.start_time}:00`,
       end_at: `${localForm.end_date}T${localForm.end_time}:00`,
       notes: localForm.notes.trim(),
@@ -767,8 +824,8 @@ function buildPayload() {
 
   if (bookingMode.value === 'single_day') {
     return {
-      pet_id: Number(localForm.pet_id),
-      service_id: Number(localForm.service_id),
+      pet_id: getSelectedPetId(),
+      service_id: getSelectedServiceId(),
       start_at: `${localForm.date}T${serviceStartTime.value}:00`,
       end_at: `${localForm.date}T${serviceEndTime.value}:00`,
       notes: localForm.notes.trim(),
@@ -779,8 +836,8 @@ function buildPayload() {
   const calculatedEnd = localForm.end_time || minutesToTime(parseTimeToMinutes(localForm.start_time) + duration)
 
   return {
-    pet_id: Number(localForm.pet_id),
-    service_id: Number(localForm.service_id),
+    pet_id: getSelectedPetId(),
+    service_id: getSelectedServiceId(),
     start_at: `${localForm.date}T${localForm.start_time}:00`,
     end_at: `${localForm.date}T${calculatedEnd}:00`,
     notes: localForm.notes.trim(),

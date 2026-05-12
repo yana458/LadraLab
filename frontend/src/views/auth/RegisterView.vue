@@ -1,6 +1,8 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiRequest } from '@/services/apiClient'
+import { getReadableErrorMessage, getValidationErrors } from '@/utils/errorMessages'
 
 const router = useRouter()
 
@@ -52,17 +54,20 @@ const registerBenefits = [
   },
 ]
 
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function clearErrors() {
+function clearFieldErrors() {
   Object.keys(errors).forEach((key) => {
     errors[key] = ''
   })
+}
 
+function clearFeedback() {
   feedback.type = ''
   feedback.message = ''
+}
+
+function clearErrors() {
+  clearFieldErrors()
+  clearFeedback()
 }
 
 function validateForm() {
@@ -101,37 +106,62 @@ function validateForm() {
   return Object.values(errors).every((value) => !value)
 }
 
+function buildRegisterPayload() {
+  return {
+    name: form.name.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim(),
+    password: form.password,
+    password_confirmation: form.password_confirmation,
+  }
+}
+
+function assignBackendErrors(validationErrors = {}) {
+  clearFieldErrors()
+
+  Object.entries(validationErrors).forEach(([field, value]) => {
+    if (!(field in errors)) return
+
+    errors[field] = Array.isArray(value) ? value[0] : String(value)
+  })
+}
+
 async function submitRegister() {
   if (isSubmitting.value) return
   if (!validateForm()) return
 
   isSubmitting.value = true
+  clearFeedback()
 
   try {
-    // Cuando se conecte el backend real:
-    // await authService.register({
-    //   name: form.name,
-    //   email: form.email,
-    //   phone: form.phone,
-    //   password: form.password,
-    //   password_confirmation: form.password_confirmation,
-    //   role: 'cliente',
-    // })
-
-    await wait(600)
+    await apiRequest('/api/auth/register', {
+      method: 'POST',
+      body: buildRegisterPayload(),
+    })
 
     feedback.type = 'success'
     feedback.message = 'Cuenta creada correctamente. Ya puedes iniciar sesión.'
 
-    setTimeout(() => {
+    window.setTimeout(() => {
       router.push({
         path: '/login',
-        query: { registered: '1' },
+        query: {
+          registered: '1',
+          email: form.email.trim(),
+        },
       })
     }, 700)
   } catch (error) {
+    console.error(error)
+
+    const validationErrors = getValidationErrors(error)
+    assignBackendErrors(validationErrors)
+
     feedback.type = 'error'
-    feedback.message = 'No se pudo crear la cuenta. Revisa los datos e inténtalo de nuevo.'
+    feedback.message = getReadableErrorMessage(
+      error,
+      'No se pudo crear la cuenta. Revisa los datos e inténtalo de nuevo.',
+    )
   } finally {
     isSubmitting.value = false
   }
@@ -348,7 +378,7 @@ async function submitRegister() {
                         v-model="form.password"
                         :type="showPassword ? 'text' : 'password'"
                         autocomplete="new-password"
-                        placeholder="Mínimo 8 caracteres"
+                        placeholder="Mínimo 6 caracteres"
                         class="input-field pr-16"
                       />
 

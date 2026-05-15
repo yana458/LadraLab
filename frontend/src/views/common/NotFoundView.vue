@@ -94,22 +94,67 @@ onBeforeUnmount(stopAnimation)
 </script>
 
 <template>
-  <main class="not-found-page min-h-screen overflow-hidden bg-[#F6F0FF] text-[#24113F]">
+  <main class="isolate min-h-screen overflow-hidden bg-[#F6F0FF] text-[#24113F]">
     <section class="relative flex min-h-screen items-center justify-center px-4 py-3 sm:px-6 lg:px-8">
       <div class="pointer-events-none absolute inset-0 overflow-hidden">
-        <span class="blob blob-1"></span>
-        <span class="blob blob-2"></span>
-        <span class="blob blob-3"></span>
+        <span
+          class="absolute -left-32 top-24 h-[22rem] w-[22rem] rounded-full bg-[radial-gradient(circle,rgba(232,60,157,0.16),rgba(232,60,157,0))] opacity-70 blur-[1px]"
+        ></span>
+        <span
+          class="absolute -right-36 bottom-8 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(116,48,208,0.16),rgba(116,48,208,0))] opacity-70 blur-[1px]"
+        ></span>
+        <span
+          class="absolute -bottom-60 left-[52%] h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(196,153,255,0.20),rgba(196,153,255,0))] opacity-70 blur-[1px]"
+        ></span>
 
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-1" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-2" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-3" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-4" aria-hidden="true" />
-
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-5" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-6" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-7" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-8" aria-hidden="true" />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute left-[3.4%] top-[8%] w-[1.6rem] -rotate-[18deg] opacity-15 saturate-90 max-lg:left-[2%]"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute left-[5.5%] top-[11%] w-5 rotate-[10deg] opacity-15 saturate-90 max-lg:left-[2%]"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute left-[3.9%] top-[15.2%] w-[1.2rem] -rotate-[8deg] opacity-15 saturate-90 max-lg:left-[2%]"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute left-[6.2%] top-[18%] w-4 rotate-[14deg] opacity-15 saturate-90 max-lg:left-[2%]"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute bottom-[8%] right-[3.4%] w-[1.6rem] rotate-[16deg] opacity-15 saturate-90 max-lg:right-[2%]"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute bottom-[11.2%] right-[5.6%] w-5 -rotate-[10deg] opacity-15 saturate-90 max-lg:right-[2%]"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute bottom-[15.5%] right-[3.8%] w-[1.2rem] rotate-[8deg] opacity-15 saturate-90 max-lg:right-[2%]"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          aria-hidden="true"
+          class="absolute bottom-[18.2%] right-[6.4%] w-4 -rotate-[14deg] opacity-15 saturate-90 max-lg:right-[2%]"
+        />
       </div>
 
       <div class="relative w-full max-w-[1280px]">
@@ -117,8 +162,10 @@ onBeforeUnmount(stopAnimation)
           class="grid overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_22px_70px_rgba(86,45,126,0.16)] lg:min-h-[620px] lg:grid-cols-[0.95fr_1.05fr]"
         >
           <section
-            class="brand-panel relative hidden overflow-hidden bg-gradient-to-br from-white via-[#FCF8FF] to-[#F1E7FF] px-8 py-5 lg:block xl:px-10"
+            class="relative hidden overflow-hidden bg-gradient-to-br from-white via-[#FCF8FF] to-[#F1E7FF] px-8 py-5 lg:block xl:px-10"
           >
+            <div class="pointer-events-none absolute inset-y-0 -right-24 w-48 rounded-l-full bg-white/85"></div>
+
             <div class="relative z-10 flex min-h-[620px] flex-col">
               <RouterLink to="/" class="inline-flex w-fit items-center">
                 <img
@@ -141,16 +188,8 @@ onBeforeUnmount(stopAnimation)
                 </h1>
 
                 <p class="mt-4 max-w-sm text-[1rem] leading-8 text-[#635778]">
-                 Pero no te preocupes, el perrito de LadraLab está aquí para ayudarte a encontrar el camino de regreso.
+                  Pero no te preocupes, el perrito de LadraLab está aquí para ayudarte a encontrar el camino de regreso.
                 </p>
-              </div>
-
-              <div class="not-found-illustration-shell">
-                <img
-                  src="/images/ladralab-not-found.png"
-                  alt="Ilustración de LadraLab para página no encontrada"
-                  class="not-found-illustration"
-                />
               </div>
             </div>
           </section>
@@ -173,48 +212,92 @@ onBeforeUnmount(stopAnimation)
                 </p>
               </div>
 
-              <div class="scene relative mt-4 h-[245px] overflow-hidden rounded-[1.45rem] border border-[#E9DDF4] bg-[#FCFAFF] shadow-[0_10px_24px_rgba(86,45,126,0.08)]">
-                <img src="/images/paws-icon.png" alt="" class="scene-paw scene-paw-1" aria-hidden="true" />
-                <img src="/images/paws-icon.png" alt="" class="scene-paw scene-paw-2" aria-hidden="true" />
-                <img src="/images/paws-icon.png" alt="" class="scene-paw scene-paw-3" aria-hidden="true" />
+              <div
+                class="relative mt-4 h-[245px] overflow-hidden rounded-[1.45rem] border border-[#E9DDF4] bg-[radial-gradient(circle_at_22%_84%,rgba(141,128,169,0.10),transparent_18%),radial-gradient(circle_at_95%_78%,rgba(232,60,157,0.08),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.65),rgba(246,240,250,0.78))] shadow-[0_10px_24px_rgba(86,45,126,0.08)] max-sm:h-72"
+              >
+                <img
+                  src="/images/paws-icon.png"
+                  alt=""
+                  aria-hidden="true"
+                  class="pointer-events-none absolute right-[22%] top-[11%] h-[1.4rem] w-[1.4rem] -rotate-12 animate-bounce object-contain opacity-[0.13]"
+                />
+                <img
+                  src="/images/paws-icon.png"
+                  alt=""
+                  aria-hidden="true"
+                  class="pointer-events-none absolute right-[12%] top-[25%] h-[1.7rem] w-[1.7rem] rotate-6 animate-bounce object-contain opacity-[0.13] [animation-delay:-1.2s]"
+                />
+                <img
+                  src="/images/paws-icon.png"
+                  alt=""
+                  aria-hidden="true"
+                  class="pointer-events-none absolute left-[10%] top-[38%] h-[1.6rem] w-[1.6rem] -rotate-6 animate-bounce object-contain opacity-[0.13] [animation-delay:-2s]"
+                />
 
-                <div class="plant plant-left">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                <div class="absolute bottom-[4.25rem] left-[6%] flex items-end gap-1 opacity-60 max-sm:hidden">
+                  <span class="block h-[2.3rem] w-3 rounded-[999px_999px_0_999px] bg-[#DCCFEA]"></span>
+                  <span class="block h-[3.1rem] w-3 rotate-12 rounded-[999px_999px_0_999px] bg-[#CBB7E0]"></span>
+                  <span class="block h-[1.9rem] w-3 rotate-[28deg] rounded-[999px_999px_0_999px] bg-[#F0B5D4]"></span>
                 </div>
 
-                <div class="plant plant-right">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                <div class="absolute bottom-[4.25rem] right-[2%] flex items-end gap-1 opacity-60 max-sm:hidden">
+                  <span class="block h-[2.3rem] w-3 rounded-[999px_999px_0_999px] bg-[#DCCFEA]"></span>
+                  <span class="block h-[3.1rem] w-3 rotate-12 rounded-[999px_999px_0_999px] bg-[#CBB7E0]"></span>
+                  <span class="block h-[1.9rem] w-3 rotate-[28deg] rounded-[999px_999px_0_999px] bg-[#F0B5D4]"></span>
                 </div>
 
-                <div class="ground-line"></div>
-
-                <div class="dog-runner" :style="dogStyle">
-                  <img :src="currentDogSrc" alt="" class="dog-runner-image" />
+                <div
+                  class="absolute bottom-[4.15rem] left-[6%] right-[6%] h-0.5 rounded-full bg-[linear-gradient(90deg,transparent,rgba(141,128,169,0.34),transparent)]"
+                >
+                  <span
+                    class="absolute left-[46%] top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 rounded-full bg-[#DCCFEA] opacity-90 [clip-path:polygon(50%_0%,100%_35%,82%_100%,50%_78%,18%_100%,0%_35%)]"
+                  ></span>
                 </div>
 
-                <div class="door">
-                  <div class="door-arch"></div>
+                <div
+                  class="absolute bottom-[4.35rem] z-[5] w-[5.8rem] origin-bottom transition-[left] duration-[80ms] ease-linear max-sm:bottom-[4.15rem] max-sm:w-[4.9rem]"
+                  :style="dogStyle"
+                >
+                  <span
+                    class="absolute bottom-1 left-1/2 h-2 w-12 -translate-x-1/2 rounded-full bg-[#514980]/15 blur"
+                  ></span>
+                  <img
+                    :src="currentDogSrc"
+                    alt=""
+                    class="relative z-10 block h-auto w-full drop-shadow-[0_4px_8px_rgba(81,73,128,0.16)]"
+                  />
+                </div>
 
-                  <div class="door-panel">
-                    <span class="door-line door-line-1"></span>
-                    <span class="door-line door-line-2"></span>
-                    <span class="door-line door-line-3"></span>
-                    <span class="door-knob"></span>
+                <div class="absolute bottom-[4.15rem] right-[8%] z-[4] h-[9.3rem] w-[6.6rem] max-sm:right-[3%] max-sm:h-[7.8rem] max-sm:w-[5.3rem]">
+                  <div
+                    class="absolute -inset-x-3.5 -bottom-1 -top-3.5 rounded-[999px_999px_1.4rem_1.4rem] bg-gradient-to-b from-white to-[#F2EDF8] shadow-[0_18px_30px_rgba(81,73,128,0.12)]"
+                  ></div>
 
-                    <div class="door-sign">
+                  <div
+                    class="absolute inset-0 overflow-hidden rounded-[999px_999px_1rem_1rem] border-[3px] border-[#5A208E]/30 bg-gradient-to-b from-[#D9CCE9] to-[#B8A6D0] shadow-[inset_0_0_0_8px_rgba(255,255,255,0.30),inset_0_-14px_24px_rgba(81,73,128,0.12)]"
+                  >
+                    <span class="absolute bottom-4 top-8 left-[35%] w-0.5 rounded-full bg-[#5A208E]/15"></span>
+                    <span class="absolute bottom-4 top-8 left-1/2 w-0.5 rounded-full bg-[#5A208E]/15"></span>
+                    <span class="absolute bottom-4 top-8 left-[65%] w-0.5 rounded-full bg-[#5A208E]/15"></span>
+                    <span
+                      class="absolute right-4 top-[54%] h-3 w-3 rounded-full bg-gradient-to-br from-white to-[#BDAFD1] shadow-[0_4px_8px_rgba(81,73,128,0.16)]"
+                    ></span>
+
+                    <div
+                      class="absolute left-1/2 top-[2.4rem] z-[4] grid h-[2.8rem] w-[2.8rem] -translate-x-1/2 place-items-center rounded-full border-4 border-[#E83C9D] bg-white shadow-[0_8px_18px_rgba(232,60,157,0.20)] max-sm:top-8 max-sm:h-9 max-sm:w-9 max-sm:border-[3px]"
+                    >
                       <img src="/images/paws-icon.png" alt="" class="h-5 w-5 object-contain" />
+                      <span class="absolute h-1 w-[3.4rem] -rotate-[38deg] rounded-full bg-[#E83C9D] max-sm:h-[3px] max-sm:w-11"></span>
                     </div>
                   </div>
                 </div>
 
-                <div class="scene-caption">
-                  <span></span>
+                <div
+                  class="absolute bottom-5 left-[8%] right-[8%] grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-sm font-black text-[#8D80A9] max-sm:text-xs"
+                >
+                  <span class="h-0.5 rounded-full bg-[#8D80A9]/20"></span>
                   <strong>Ruta no disponible</strong>
-                  <span></span>
+                  <span class="h-0.5 rounded-full bg-[#8D80A9]/20"></span>
                 </div>
               </div>
 
@@ -223,7 +306,12 @@ onBeforeUnmount(stopAnimation)
                   to="/"
                   class="group flex h-[3.05rem] items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-[#E83C9D] to-[#7430D0] px-5 text-sm font-black text-white shadow-[0_16px_32px_rgba(132,56,194,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_38px_rgba(132,56,194,0.3)]"
                 >
-                  <img src="/images/paws-icon.png" alt="" class="button-paw" aria-hidden="true" />
+                  <img
+                    src="/images/paws-icon.png"
+                    alt=""
+                    aria-hidden="true"
+                    class="h-[1.15rem] w-[1.15rem] object-contain brightness-0 invert"
+                  />
                   Inicio
                 </RouterLink>
 
@@ -245,14 +333,12 @@ onBeforeUnmount(stopAnimation)
 
               <div class="my-4 flex items-center gap-4 text-[#D8C8EC]">
                 <span class="h-px flex-1 bg-current"></span>
-
                 <img
                   src="/images/paws-icon.png"
                   alt=""
-                  class="separator-paw"
+                  class="h-3.5 w-3.5 object-contain opacity-35"
                   aria-hidden="true"
                 />
-
                 <span class="h-px flex-1 bg-current"></span>
               </div>
 
@@ -273,10 +359,12 @@ onBeforeUnmount(stopAnimation)
           <article
             v-for="benefit in notFoundBenefits"
             :key="benefit.title"
-            class="feature-card group rounded-[1.45rem] border border-white/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(86,45,126,0.12)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(86,45,126,0.16)]"
+            class="group rounded-[1.45rem] border border-white/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(86,45,126,0.12)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(86,45,126,0.16)]"
           >
-            <div class="flex items-center gap-3.5">
-              <div class="feature-icon">
+            <div class="flex items-center gap-3.5 max-sm:items-start">
+              <div
+                class="grid h-[3.95rem] w-[3.95rem] min-w-[3.95rem] place-items-center rounded-[1.2rem] bg-gradient-to-br from-[#F6EFFF] to-[#FFF5FB] shadow-[inset_0_0_0_1px_rgba(141,85,199,0.08)] transition group-hover:scale-[1.04] group-hover:-rotate-2 max-sm:h-[3.8rem] max-sm:w-[3.8rem] max-sm:min-w-[3.8rem]"
+              >
                 <img :src="benefit.image" :alt="benefit.alt" class="h-full w-full object-contain" />
               </div>
 
@@ -295,492 +383,3 @@ onBeforeUnmount(stopAnimation)
     </section>
   </main>
 </template>
-
-<style scoped>
-.not-found-page {
-  isolation: isolate;
-}
-
-.blob {
-  position: absolute;
-  border-radius: 999px;
-  opacity: 0.72;
-  filter: blur(1px);
-}
-
-.blob-1 {
-  left: -8rem;
-  top: 6rem;
-  width: 22rem;
-  height: 22rem;
-  background: radial-gradient(circle, rgba(232, 60, 157, 0.16), rgba(232, 60, 157, 0));
-}
-
-.blob-2 {
-  right: -9rem;
-  bottom: 2rem;
-  width: 26rem;
-  height: 26rem;
-  background: radial-gradient(circle, rgba(116, 48, 208, 0.16), rgba(116, 48, 208, 0));
-}
-
-.blob-3 {
-  left: 52%;
-  bottom: -15rem;
-  width: 34rem;
-  height: 34rem;
-  background: radial-gradient(circle, rgba(196, 153, 255, 0.2), rgba(196, 153, 255, 0));
-}
-
-.floating-paw {
-  position: absolute;
-  width: 1.6rem;
-  opacity: 0.16;
-  filter: saturate(0.9);
-}
-
-.floating-paw-1 {
-  top: 8%;
-  left: 3.4%;
-  transform: rotate(-18deg);
-}
-
-.floating-paw-2 {
-  top: 11%;
-  left: 5.5%;
-  width: 1.25rem;
-  transform: rotate(10deg);
-}
-
-.floating-paw-3 {
-  top: 15.2%;
-  left: 3.9%;
-  width: 1.2rem;
-  transform: rotate(-8deg);
-}
-
-.floating-paw-4 {
-  top: 18%;
-  left: 6.2%;
-  width: 1rem;
-  transform: rotate(14deg);
-}
-
-.floating-paw-5 {
-  right: 3.4%;
-  bottom: 8%;
-  transform: rotate(16deg);
-}
-
-.floating-paw-6 {
-  right: 5.6%;
-  bottom: 11.2%;
-  width: 1.25rem;
-  transform: rotate(-10deg);
-}
-
-.floating-paw-7 {
-  right: 3.8%;
-  bottom: 15.5%;
-  width: 1.2rem;
-  transform: rotate(8deg);
-}
-
-.floating-paw-8 {
-  right: 6.4%;
-  bottom: 18.2%;
-  width: 1rem;
-  transform: rotate(-14deg);
-}
-
-.brand-panel::after {
-  position: absolute;
-  inset: 0 -6rem 0 auto;
-  width: 12rem;
-  content: '';
-  background: white;
-  border-radius: 50% 0 0 50%;
-  opacity: 0.86;
-}
-
-.not-found-illustration-shell {
-  position: relative;
-  display: flex;
-  min-height: 155px;
-  align-items: stretch;
-  justify-content: flex-start;
-  margin-top: 0.4rem;
-  padding: 0.1rem 0.5rem 0;
-  overflow: hidden;
-  transform: translateX(-40px);
-}
-
-.not-found-illustration-shell::before {
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  bottom: 0;
-  height: 84%;
-  content: '';
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(236, 221, 255, 0.98), rgba(236, 221, 255, 0));
-}
-
-.not-found-illustration {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: min(100%, 540px);
-  max-height: 205px;
-  margin: 0 auto;
-  object-fit: contain;
-  object-position: center top;
-  filter: drop-shadow(0 16px 28px rgba(109, 80, 165, 0.14));
-}
-
-.scene {
-  background:
-    radial-gradient(circle at 22% 84%, rgba(141, 128, 169, 0.1), transparent 18%),
-    radial-gradient(circle at 95% 78%, rgba(232, 60, 157, 0.08), transparent 22%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(246, 240, 250, 0.78));
-}
-
-.scene-paw {
-  position: absolute;
-  width: 1.4rem;
-  height: 1.4rem;
-  object-fit: contain;
-  opacity: 0.13;
-  pointer-events: none;
-  animation: scene-paw-float 5s ease-in-out infinite;
-}
-
-.scene-paw-1 {
-  right: 22%;
-  top: 11%;
-  transform: rotate(-12deg);
-}
-
-.scene-paw-2 {
-  right: 12%;
-  top: 25%;
-  width: 1.7rem;
-  height: 1.7rem;
-  animation-delay: -1.2s;
-}
-
-.scene-paw-3 {
-  left: 10%;
-  top: 38%;
-  width: 1.6rem;
-  height: 1.6rem;
-  animation-delay: -2s;
-}
-
-.ground-line {
-  position: absolute;
-  left: 6%;
-  right: 6%;
-  bottom: 4.15rem;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(141, 128, 169, 0.34), transparent);
-}
-
-.ground-line::after {
-  position: absolute;
-  left: 46%;
-  top: 50%;
-  width: 1rem;
-  height: 1rem;
-  content: '';
-  border-radius: 999px;
-  background: #dccfea;
-  opacity: 0.9;
-  transform: translateY(-50%) rotate(45deg);
-  clip-path: polygon(50% 0%, 100% 35%, 82% 100%, 50% 78%, 18% 100%, 0% 35%);
-}
-
-.dog-runner {
-  position: absolute;
-  bottom: 4.35rem;
-  z-index: 5;
-  width: 5.8rem;
-  transform-origin: center bottom;
-  transition: left 0.08s linear;
-}
-
-.dog-runner::after {
-  position: absolute;
-  left: 50%;
-  bottom: 0.2rem;
-  width: 3rem;
-  height: 0.55rem;
-  content: '';
-  border-radius: 999px;
-  background: rgba(81, 73, 128, 0.16);
-  filter: blur(4px);
-  transform: translateX(-50%);
-}
-
-.dog-runner-image {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: auto;
-  filter: drop-shadow(0 4px 8px rgba(81, 73, 128, 0.16));
-}
-
-.door {
-  position: absolute;
-  right: 8%;
-  bottom: 4.15rem;
-  z-index: 4;
-  width: 6.6rem;
-  height: 9.3rem;
-}
-
-.door-arch {
-  position: absolute;
-  inset: -0.9rem -0.9rem -0.3rem;
-  border-radius: 999px 999px 1.4rem 1.4rem;
-  background: linear-gradient(180deg, #ffffff 0%, #f2edf8 100%);
-  box-shadow: 0 18px 30px rgba(81, 73, 128, 0.12);
-}
-
-.door-panel {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border: 3px solid rgba(90, 32, 142, 0.28);
-  border-radius: 999px 999px 1rem 1rem;
-  background: linear-gradient(180deg, #d9cce9 0%, #b8a6d0 100%);
-  box-shadow:
-    inset 0 0 0 8px rgba(255, 255, 255, 0.3),
-    inset 0 -14px 24px rgba(81, 73, 128, 0.12);
-}
-
-.door-line {
-  position: absolute;
-  top: 2rem;
-  bottom: 1rem;
-  width: 2px;
-  border-radius: 999px;
-  background: rgba(90, 32, 142, 0.15);
-}
-
-.door-line-1 {
-  left: 35%;
-}
-
-.door-line-2 {
-  left: 50%;
-}
-
-.door-line-3 {
-  left: 65%;
-}
-
-.door-knob {
-  position: absolute;
-  right: 1rem;
-  top: 54%;
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ffffff, #bdafd1);
-  box-shadow: 0 4px 8px rgba(81, 73, 128, 0.16);
-}
-
-.door-sign {
-  position: absolute;
-  left: 50%;
-  top: 2.4rem;
-  z-index: 4;
-  display: grid;
-  width: 2.8rem;
-  height: 2.8rem;
-  place-items: center;
-  border: 4px solid #e83c9d;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 8px 18px rgba(232, 60, 157, 0.2);
-  transform: translateX(-50%);
-}
-
-.door-sign::after {
-  position: absolute;
-  width: 3.4rem;
-  height: 4px;
-  content: '';
-  border-radius: 999px;
-  background: #e83c9d;
-  transform: rotate(-38deg);
-}
-
-.plant {
-  position: absolute;
-  bottom: 4.25rem;
-  display: flex;
-  align-items: flex-end;
-  gap: 0.25rem;
-  opacity: 0.62;
-}
-
-.plant span {
-  display: block;
-  width: 0.8rem;
-  height: 2.3rem;
-  border-radius: 999px 999px 0 999px;
-  background: #dccfea;
-}
-
-.plant span:nth-child(2) {
-  height: 3.1rem;
-  background: #cbb7e0;
-  transform: rotate(12deg);
-}
-
-.plant span:nth-child(3) {
-  height: 1.9rem;
-  background: #f0b5d4;
-  transform: rotate(28deg);
-}
-
-.plant-left {
-  left: 6%;
-}
-
-.plant-right {
-  right: 2%;
-}
-
-.scene-caption {
-  position: absolute;
-  right: 8%;
-  bottom: 1.2rem;
-  left: 8%;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 0.8rem;
-  color: #8d80a9;
-  font-size: 0.9rem;
-  font-weight: 900;
-}
-
-.scene-caption span {
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(141, 128, 169, 0.22);
-}
-
-.button-paw {
-  width: 1.15rem;
-  height: 1.15rem;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
-}
-
-.separator-paw {
-  width: 0.9rem;
-  height: 0.9rem;
-  object-fit: contain;
-  opacity: 0.36;
-}
-
-.feature-icon {
-  display: grid;
-  min-width: 3.95rem;
-  width: 3.95rem;
-  height: 3.95rem;
-  place-items: center;
-  border-radius: 1.2rem;
-  background: linear-gradient(135deg, #f6efff, #fff5fb);
-  box-shadow: inset 0 0 0 1px rgba(141, 85, 199, 0.08);
-  transition: transform 0.2s ease;
-}
-
-.feature-card:hover .feature-icon {
-  transform: scale(1.04) rotate(-2deg);
-}
-
-@keyframes scene-paw-float {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-10deg);
-  }
-
-  50% {
-    transform: translateY(-8px) rotate(6deg);
-  }
-}
-
-@media (max-width: 1023px) {
-  .brand-panel {
-    display: none;
-  }
-
-  .floating-paw-1,
-  .floating-paw-2,
-  .floating-paw-3,
-  .floating-paw-4 {
-    left: 2%;
-  }
-
-  .floating-paw-5,
-  .floating-paw-6,
-  .floating-paw-7,
-  .floating-paw-8 {
-    right: 2%;
-  }
-}
-
-@media (max-width: 640px) {
-  .scene {
-    height: 18rem;
-  }
-
-  .dog-runner {
-    bottom: 4.15rem;
-    width: 4.9rem;
-  }
-
-  .door {
-    right: 3%;
-    width: 5.3rem;
-    height: 7.8rem;
-  }
-
-  .door-sign {
-    top: 2rem;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-width: 3px;
-  }
-
-  .door-sign::after {
-    width: 2.8rem;
-    height: 3px;
-  }
-
-  .plant {
-    display: none;
-  }
-
-  .scene-caption {
-    font-size: 0.8rem;
-  }
-
-  .feature-card .flex {
-    align-items: flex-start;
-  }
-
-  .feature-icon {
-    min-width: 3.8rem;
-    width: 3.8rem;
-    height: 3.8rem;
-  }
-}
-</style>

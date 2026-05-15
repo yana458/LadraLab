@@ -87,22 +87,67 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <main class="forgot-page min-h-screen overflow-hidden bg-[#F6F0FF] text-[#24113F]">
+  <main class="min-h-screen overflow-hidden bg-[#F6F0FF] text-[#24113F]">
     <section class="relative flex min-h-screen items-center justify-center px-4 py-3 sm:px-6 lg:px-8">
       <div class="pointer-events-none absolute inset-0 overflow-hidden">
-        <span class="blob blob-1"></span>
-        <span class="blob blob-2"></span>
-        <span class="blob blob-3"></span>
+        <span
+          class="absolute -left-32 top-24 h-[22rem] w-[22rem] rounded-full bg-[radial-gradient(circle,rgba(232,60,157,0.16),rgba(232,60,157,0))] opacity-[0.72] blur-[1px]"
+        ></span>
+        <span
+          class="absolute -right-36 bottom-8 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(116,48,208,0.16),rgba(116,48,208,0))] opacity-[0.72] blur-[1px]"
+        ></span>
+        <span
+          class="absolute -bottom-60 left-[52%] h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(196,153,255,0.2),rgba(196,153,255,0))] opacity-[0.72] blur-[1px]"
+        ></span>
 
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-1" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-2" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-3" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-4" aria-hidden="true" />
-
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-5" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-6" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-7" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-8" aria-hidden="true" />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[3.4%] top-[8%] w-[1.6rem] -rotate-[18deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[5.5%] top-[11%] w-5 rotate-[10deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[3.9%] top-[15.2%] w-[1.2rem] -rotate-[8deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[6.2%] top-[18%] w-4 rotate-[14deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[8%] right-[3.4%] w-[1.6rem] rotate-[16deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[11.2%] right-[5.6%] w-5 -rotate-[10deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[15.5%] right-[3.8%] w-[1.2rem] rotate-[8deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[18.2%] right-[6.4%] w-4 -rotate-[14deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
       </div>
 
       <div class="relative w-full max-w-[1280px]">
@@ -110,8 +155,10 @@ async function handleSubmit() {
           class="grid overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_22px_70px_rgba(86,45,126,0.16)] lg:min-h-[620px] lg:grid-cols-[0.95fr_1.05fr]"
         >
           <section
-            class="brand-panel relative hidden overflow-hidden bg-gradient-to-br from-white via-[#FCF8FF] to-[#F1E7FF] px-8 py-5 lg:block xl:px-10"
+            class="relative hidden overflow-hidden bg-gradient-to-br from-white via-[#FCF8FF] to-[#F1E7FF] px-8 py-5 lg:block xl:px-10"
           >
+            <div class="pointer-events-none absolute inset-y-0 -right-24 w-48 rounded-l-full bg-white/85"></div>
+
             <div class="relative z-10 flex min-h-[620px] flex-col">
               <RouterLink to="/" class="inline-flex w-fit items-center">
                 <img
@@ -136,14 +183,6 @@ async function handleSubmit() {
                 <p class="mt-4 max-w-lg text-[1rem] leading-8 text-[#635778]">
                   Te enviaremos las instrucciones necesarias para restablecer tu contraseña y recuperar el acceso a tu espacio en LadraLab.
                 </p>
-              </div>
-
-              <div class="forgot-illustration-shell">
-                <img
-                  src="/images/login-ladralab.png"
-                  alt="Ilustración de LadraLab con seguimientos y reservas"
-                  class="forgot-illustration"
-                />
               </div>
             </div>
           </section>
@@ -191,8 +230,18 @@ async function handleSubmit() {
                     Correo electrónico
                   </span>
 
-                  <div class="input-shell" :class="errors.email ? 'input-shell--error' : ''">
-                    <span class="input-icon" aria-hidden="true">
+                  <div
+                    class="relative flex min-h-[2.85rem] items-center overflow-hidden rounded-2xl border bg-white transition focus-within:border-[#8D55C7] focus-within:shadow-[0_0_0_4px_rgba(141,85,199,0.12)]"
+                    :class="
+                      errors.email
+                        ? 'border-[#F5A1B4] focus-within:border-[#EF5F80] focus-within:shadow-[0_0_0_4px_rgba(239,95,128,0.12)]'
+                        : 'border-[#D9C7EA]'
+                    "
+                  >
+                    <span
+                      class="grid min-h-[2.85rem] w-[2.85rem] place-items-center bg-[#F2E9FF] text-[#7D45C5]"
+                      aria-hidden="true"
+                    >
                       <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5">
                         <path
                           d="M4.75 6.75h14.5v10.5H4.75V6.75Z"
@@ -215,11 +264,11 @@ async function handleSubmit() {
                       type="email"
                       autocomplete="email"
                       placeholder="tu@correo.com"
-                      class="input-field"
+                      class="min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold text-[#24113F] outline-none placeholder:text-[#A79AB8]"
                     />
                   </div>
 
-                  <span v-if="errors.email" class="error-text">
+                  <span v-if="errors.email" class="mt-1.5 block text-xs font-bold text-red-500">
                     {{ errors.email }}
                   </span>
                 </label>
@@ -229,7 +278,12 @@ async function handleSubmit() {
                   :disabled="isSubmitting"
                   class="group flex h-[3.05rem] w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-[#E83C9D] to-[#7430D0] px-5 text-base font-black text-white shadow-[0_16px_32px_rgba(132,56,194,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_38px_rgba(132,56,194,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <img src="/images/paws-icon.png" alt="" class="button-paw" aria-hidden="true" />
+                  <img
+                    src="/images/paws-icon.png"
+                    alt=""
+                    class="h-[1.15rem] w-[1.15rem] object-contain brightness-0 invert"
+                    aria-hidden="true"
+                  />
                   {{ isSubmitting ? 'Enviando...' : 'Enviar instrucciones' }}
                 </button>
               </form>
@@ -240,7 +294,7 @@ async function handleSubmit() {
                 <img
                   src="/images/paws-icon.png"
                   alt=""
-                  class="separator-paw"
+                  class="h-3.5 w-3.5 object-contain opacity-35"
                   aria-hidden="true"
                 />
 
@@ -271,10 +325,12 @@ async function handleSubmit() {
           <article
             v-for="benefit in recoveryBenefits"
             :key="benefit.title"
-            class="feature-card group rounded-[1.45rem] border border-white/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(86,45,126,0.12)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(86,45,126,0.16)]"
+            class="group rounded-[1.45rem] border border-white/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(86,45,126,0.12)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(86,45,126,0.16)]"
           >
-            <div class="flex items-center gap-3.5">
-              <div class="feature-icon">
+            <div class="flex items-center gap-3.5 max-sm:items-start">
+              <div
+                class="grid h-[3.95rem] w-[3.95rem] min-w-[3.95rem] place-items-center rounded-[1.2rem] bg-gradient-to-br from-[#F6EFFF] to-[#FFF5FB] shadow-[inset_0_0_0_1px_rgba(141,85,199,0.08)] transition group-hover:scale-[1.04] group-hover:-rotate-2 max-sm:h-[3.8rem] max-sm:w-[3.8rem] max-sm:min-w-[3.8rem]"
+              >
                 <img :src="benefit.image" :alt="benefit.alt" class="h-full w-full object-contain" />
               </div>
 
@@ -293,267 +349,3 @@ async function handleSubmit() {
     </section>
   </main>
 </template>
-
-<style scoped>
-.forgot-page {
-  isolation: isolate;
-}
-
-.blob {
-  position: absolute;
-  border-radius: 999px;
-  opacity: 0.72;
-  filter: blur(1px);
-}
-
-.blob-1 {
-  left: -8rem;
-  top: 6rem;
-  width: 22rem;
-  height: 22rem;
-  background: radial-gradient(circle, rgba(232, 60, 157, 0.16), rgba(232, 60, 157, 0));
-}
-
-.blob-2 {
-  right: -9rem;
-  bottom: 2rem;
-  width: 26rem;
-  height: 26rem;
-  background: radial-gradient(circle, rgba(116, 48, 208, 0.16), rgba(116, 48, 208, 0));
-}
-
-.blob-3 {
-  left: 52%;
-  bottom: -15rem;
-  width: 34rem;
-  height: 34rem;
-  background: radial-gradient(circle, rgba(196, 153, 255, 0.2), rgba(196, 153, 255, 0));
-}
-
-.floating-paw {
-  position: absolute;
-  width: 1.6rem;
-  opacity: 0.16;
-  filter: saturate(0.9);
-}
-
-.floating-paw-1 {
-  top: 8%;
-  left: 3.4%;
-  transform: rotate(-18deg);
-}
-
-.floating-paw-2 {
-  top: 11%;
-  left: 5.5%;
-  width: 1.25rem;
-  transform: rotate(10deg);
-}
-
-.floating-paw-3 {
-  top: 15.2%;
-  left: 3.9%;
-  width: 1.2rem;
-  transform: rotate(-8deg);
-}
-
-.floating-paw-4 {
-  top: 18%;
-  left: 6.2%;
-  width: 1rem;
-  transform: rotate(14deg);
-}
-
-.floating-paw-5 {
-  right: 3.4%;
-  bottom: 8%;
-  transform: rotate(16deg);
-}
-
-.floating-paw-6 {
-  right: 5.6%;
-  bottom: 11.2%;
-  width: 1.25rem;
-  transform: rotate(-10deg);
-}
-
-.floating-paw-7 {
-  right: 3.8%;
-  bottom: 15.5%;
-  width: 1.2rem;
-  transform: rotate(8deg);
-}
-
-.floating-paw-8 {
-  right: 6.4%;
-  bottom: 18.2%;
-  width: 1rem;
-  transform: rotate(-14deg);
-}
-
-.brand-panel::after {
-  position: absolute;
-  inset: 0 -6rem 0 auto;
-  width: 12rem;
-  content: '';
-  background: white;
-  border-radius: 50% 0 0 50%;
-  opacity: 0.86;
-}
-
-.forgot-illustration-shell {
-  position: relative;
-  display: flex;
-  min-height: 155px;
-  align-items: flex-start;
-  justify-content: center;
-  margin-top: 0.4rem;
-  padding: 0.1rem 0.5rem 0;
-  overflow: hidden;
-}
-
-.forgot-illustration-shell::before {
-  position: absolute;
-  left: 12%;
-  right: 12%;
-  bottom: 0;
-  height: 84%;
-  content: '';
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(236, 221, 255, 0.98), rgba(236, 221, 255, 0));
-}
-
-.forgot-illustration {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: min(100%, 540px);
-  max-height: 205px;
-  margin: 0 auto;
-  object-fit: contain;
-  object-position: center top;
-  filter: drop-shadow(0 16px 28px rgba(109, 80, 165, 0.14));
-}
-
-.input-shell {
-  position: relative;
-  display: flex;
-  min-height: 2.85rem;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid #d9c7ea;
-  border-radius: 1rem;
-  background: #fff;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.input-shell:focus-within {
-  border-color: #8d55c7;
-  box-shadow: 0 0 0 4px rgba(141, 85, 199, 0.12);
-}
-
-.input-shell--error {
-  border-color: #f5a1b4;
-}
-
-.input-shell--error:focus-within {
-  border-color: #ef5f80;
-  box-shadow: 0 0 0 4px rgba(239, 95, 128, 0.12);
-}
-
-.input-icon {
-  display: grid;
-  min-height: 2.85rem;
-  width: 2.85rem;
-  place-items: center;
-  background: #f2e9ff;
-  color: #7d45c5;
-}
-
-.input-field {
-  min-width: 0;
-  flex: 1;
-  background: transparent;
-  padding: 0 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #24113f;
-  outline: none;
-}
-
-.input-field::placeholder {
-  color: #a79ab8;
-}
-
-.error-text {
-  margin-top: 0.35rem;
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #ef4444;
-}
-
-.button-paw {
-  width: 1.15rem;
-  height: 1.15rem;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
-}
-
-.separator-paw {
-  width: 0.9rem;
-  height: 0.9rem;
-  object-fit: contain;
-  opacity: 0.36;
-}
-
-.feature-icon {
-  display: grid;
-  min-width: 3.95rem;
-  width: 3.95rem;
-  height: 3.95rem;
-  place-items: center;
-  border-radius: 1.2rem;
-  background: linear-gradient(135deg, #f6efff, #fff5fb);
-  box-shadow: inset 0 0 0 1px rgba(141, 85, 199, 0.08);
-  transition: transform 0.2s ease;
-}
-
-.feature-card:hover .feature-icon {
-  transform: scale(1.04) rotate(-2deg);
-}
-
-@media (max-width: 1023px) {
-  .brand-panel {
-    display: none;
-  }
-
-  .floating-paw-1,
-  .floating-paw-2,
-  .floating-paw-3,
-  .floating-paw-4 {
-    left: 2%;
-  }
-
-  .floating-paw-5,
-  .floating-paw-6,
-  .floating-paw-7,
-  .floating-paw-8 {
-    right: 2%;
-  }
-}
-
-@media (max-width: 640px) {
-  .feature-card .flex {
-    align-items: flex-start;
-  }
-
-  .feature-icon {
-    min-width: 3.8rem;
-    width: 3.8rem;
-    height: 3.8rem;
-  }
-}
-</style>

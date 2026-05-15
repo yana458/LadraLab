@@ -27,8 +27,11 @@ const showPassword = ref(false)
 const isSubmitting = ref(false)
 const isDogEntering = ref(false)
 const currentDogFrame = ref(0)
+const dogAnimationProgress = ref(0)
 
 let dogFrameInterval = null
+let dogMovementFrame = null
+let dogAnimationStart = null
 
 const registerSuccessMessage = computed(() =>
   route.query.registered === '1'
@@ -64,6 +67,47 @@ const dogFrames = Array.from(
 
 const currentDogSrc = computed(() => dogFrames[currentDogFrame.value])
 
+const runningDogStyle = computed(() => {
+  const progress = dogAnimationProgress.value
+  const left = isDogEntering.value ? 3 + progress * 82 : 3
+  const scale = getDogScale(progress)
+  const opacity = progress > 0.92 ? Math.max(0, 1 - (progress - 0.92) / 0.08) : 1
+
+  return {
+    left: `${left}%`,
+    transform: `scale(${scale})`,
+    opacity,
+  }
+})
+
+const doorGlowStyle = computed(() => {
+  const progress = dogAnimationProgress.value
+  const isVisible = isDogEntering.value && progress > 0.35
+  const opacity = isVisible ? Math.max(0, 1 - Math.max(progress - 0.72, 0) / 0.28) : 0
+  const scale = isVisible ? 0.85 + progress * 0.45 : 0.5
+
+  return {
+    opacity,
+    transform: `scale(${scale})`,
+  }
+})
+
+const doorPanelStyle = computed(() => ({
+  transform: isDogEntering.value ? 'perspective(240px) rotateY(74deg)' : 'perspective(240px) rotateY(0deg)',
+}))
+
+function getDogScale(progress) {
+  if (!isDogEntering.value) return 1
+  if (progress < 0.58) return 1
+  if (progress < 0.78) return interpolate(1, 0.92, (progress - 0.58) / 0.2)
+  if (progress < 0.92) return interpolate(0.92, 0.55, (progress - 0.78) / 0.14)
+  return interpolate(0.55, 0.18, (progress - 0.92) / 0.08)
+}
+
+function interpolate(from, to, progress) {
+  return from + (to - from) * Math.min(Math.max(progress, 0), 1)
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -97,9 +141,17 @@ function stopDogAnimation(reset = true) {
     dogFrameInterval = null
   }
 
+  if (dogMovementFrame) {
+    window.cancelAnimationFrame(dogMovementFrame)
+    dogMovementFrame = null
+  }
+
+  dogAnimationStart = null
+
   if (reset) {
     isDogEntering.value = false
     currentDogFrame.value = 0
+    dogAnimationProgress.value = 0
   }
 }
 
@@ -108,10 +160,27 @@ function startDogAnimation() {
 
   isDogEntering.value = true
   currentDogFrame.value = 0
+  dogAnimationProgress.value = 0
+  dogAnimationStart = null
 
   dogFrameInterval = window.setInterval(() => {
     currentDogFrame.value = (currentDogFrame.value + 1) % dogFrames.length
   }, 90)
+
+  const animateMovement = (timestamp) => {
+    if (!dogAnimationStart) {
+      dogAnimationStart = timestamp
+    }
+
+    const elapsed = timestamp - dogAnimationStart
+    dogAnimationProgress.value = Math.min(elapsed / 1250, 1)
+
+    if (dogAnimationProgress.value < 1) {
+      dogMovementFrame = window.requestAnimationFrame(animateMovement)
+    }
+  }
+
+  dogMovementFrame = window.requestAnimationFrame(animateMovement)
 }
 
 async function handleSubmit() {
@@ -163,22 +232,67 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="login-page min-h-screen overflow-hidden bg-[#F6F0FF] text-[#24113F]">
+  <main class="isolate min-h-screen overflow-hidden bg-[#F6F0FF] text-[#24113F]">
     <section class="relative flex min-h-screen items-center justify-center px-4 py-3 sm:px-6 lg:px-8">
       <div class="pointer-events-none absolute inset-0 overflow-hidden">
-        <span class="blob blob-1"></span>
-        <span class="blob blob-2"></span>
-        <span class="blob blob-3"></span>
+        <span
+          class="absolute -left-32 top-24 h-[22rem] w-[22rem] rounded-full bg-[radial-gradient(circle,rgba(232,60,157,0.16),rgba(232,60,157,0))] opacity-[0.72] blur-[1px]"
+        ></span>
+        <span
+          class="absolute -right-36 bottom-8 h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,rgba(116,48,208,0.16),rgba(116,48,208,0))] opacity-[0.72] blur-[1px]"
+        ></span>
+        <span
+          class="absolute -bottom-60 left-[52%] h-[34rem] w-[34rem] rounded-full bg-[radial-gradient(circle,rgba(196,153,255,0.2),rgba(196,153,255,0))] opacity-[0.72] blur-[1px]"
+        ></span>
 
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-1" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-2" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-3" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-4" aria-hidden="true" />
-
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-5" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-6" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-7" aria-hidden="true" />
-        <img src="/images/paws-icon.png" alt="" class="floating-paw floating-paw-8" aria-hidden="true" />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[3.4%] top-[8%] w-[1.6rem] -rotate-[18deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[5.5%] top-[11%] w-5 rotate-[10deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[3.9%] top-[15.2%] w-[1.2rem] -rotate-[8deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute left-[6.2%] top-[18%] w-4 rotate-[14deg] opacity-15 saturate-90 max-lg:left-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[8%] right-[3.4%] w-[1.6rem] rotate-[16deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[11.2%] right-[5.6%] w-5 -rotate-[10deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[15.5%] right-[3.8%] w-[1.2rem] rotate-[8deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
+        <img
+          src="/images/paws-icon.png"
+          alt=""
+          class="absolute bottom-[18.2%] right-[6.4%] w-4 -rotate-[14deg] opacity-15 saturate-90 max-lg:right-[2%]"
+          aria-hidden="true"
+        />
       </div>
 
       <div class="relative w-full max-w-[1280px]">
@@ -186,8 +300,10 @@ onBeforeUnmount(() => {
           class="grid overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-[0_22px_70px_rgba(86,45,126,0.16)] lg:min-h-[620px] lg:grid-cols-[0.95fr_1.05fr]"
         >
           <section
-            class="brand-panel relative hidden overflow-hidden bg-gradient-to-br from-white via-[#FCF8FF] to-[#F1E7FF] px-8 py-5 lg:block xl:px-10"
+            class="relative hidden overflow-hidden bg-gradient-to-br from-white via-[#FCF8FF] to-[#F1E7FF] px-8 py-5 lg:block xl:px-10"
           >
+            <div class="pointer-events-none absolute inset-y-0 -right-24 w-48 rounded-l-full bg-white/85"></div>
+
             <div class="relative z-10 flex min-h-[620px] flex-col">
               <RouterLink to="/" class="inline-flex w-fit items-center">
                 <img
@@ -204,7 +320,7 @@ onBeforeUnmount(() => {
                   Gestión sencilla y conectada
                 </p>
 
-                <h1 class="text-[2.05rem] font-black leading-tight text-[#24113F] xl:text-[2.45rem] mt-3 max-w-[480px]">
+                <h1 class="mt-3 max-w-[480px] text-[2.05rem] font-black leading-tight text-[#24113F] xl:text-[2.45rem]">
                   Tu centro y tus mascotas,
                   <span class="block text-[#E83C9D]">más claro y conectado</span>
                 </h1>
@@ -259,8 +375,18 @@ onBeforeUnmount(() => {
                     Correo electrónico
                   </span>
 
-                  <div class="input-shell" :class="errors.email ? 'input-shell--error' : ''">
-                    <span class="input-icon" aria-hidden="true">
+                  <div
+                    class="relative flex min-h-[2.85rem] items-center overflow-hidden rounded-2xl border bg-white transition focus-within:border-[#8D55C7] focus-within:shadow-[0_0_0_4px_rgba(141,85,199,0.12)]"
+                    :class="
+                      errors.email
+                        ? 'border-[#F5A1B4] focus-within:border-[#EF5F80] focus-within:shadow-[0_0_0_4px_rgba(239,95,128,0.12)]'
+                        : 'border-[#D9C7EA]'
+                    "
+                  >
+                    <span
+                      class="grid min-h-[2.85rem] w-[2.85rem] place-items-center bg-[#F2E9FF] text-[#7D45C5]"
+                      aria-hidden="true"
+                    >
                       <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5">
                         <path
                           d="M4.75 6.75h14.5v10.5H4.75V6.75Z"
@@ -283,11 +409,11 @@ onBeforeUnmount(() => {
                       type="email"
                       autocomplete="email"
                       placeholder="tu@correo.com"
-                      class="input-field"
+                      class="min-w-0 flex-1 bg-transparent px-4 text-sm font-semibold text-[#24113F] outline-none placeholder:text-[#A79AB8]"
                     />
                   </div>
 
-                  <span v-if="errors.email" class="error-text">
+                  <span v-if="errors.email" class="mt-1.5 block text-xs font-bold text-red-500">
                     {{ errors.email }}
                   </span>
                 </label>
@@ -297,8 +423,18 @@ onBeforeUnmount(() => {
                     Contraseña
                   </span>
 
-                  <div class="input-shell" :class="errors.password ? 'input-shell--error' : ''">
-                    <span class="input-icon" aria-hidden="true">
+                  <div
+                    class="relative flex min-h-[2.85rem] items-center overflow-hidden rounded-2xl border bg-white transition focus-within:border-[#8D55C7] focus-within:shadow-[0_0_0_4px_rgba(141,85,199,0.12)]"
+                    :class="
+                      errors.password
+                        ? 'border-[#F5A1B4] focus-within:border-[#EF5F80] focus-within:shadow-[0_0_0_4px_rgba(239,95,128,0.12)]'
+                        : 'border-[#D9C7EA]'
+                    "
+                  >
+                    <span
+                      class="grid min-h-[2.85rem] w-[2.85rem] place-items-center bg-[#F2E9FF] text-[#7D45C5]"
+                      aria-hidden="true"
+                    >
                       <svg viewBox="0 0 24 24" fill="none" class="h-5 w-5">
                         <path
                           d="M7.75 10.25V8.5a4.25 4.25 0 0 1 8.5 0v1.75"
@@ -319,7 +455,7 @@ onBeforeUnmount(() => {
                       :type="showPassword ? 'text' : 'password'"
                       autocomplete="current-password"
                       placeholder="Introduce tu contraseña"
-                      class="input-field pr-16"
+                      class="min-w-0 flex-1 bg-transparent px-4 pr-16 text-sm font-semibold text-[#24113F] outline-none placeholder:text-[#A79AB8]"
                     />
 
                     <button
@@ -331,7 +467,7 @@ onBeforeUnmount(() => {
                     </button>
                   </div>
 
-                  <span v-if="errors.password" class="error-text">
+                  <span v-if="errors.password" class="mt-1.5 block text-xs font-bold text-red-500">
                     {{ errors.password }}
                   </span>
                 </label>
@@ -354,29 +490,38 @@ onBeforeUnmount(() => {
                   </RouterLink>
                 </div>
 
-                <!-- Perrito encima del botón -->
-                <div class="dog-strip" aria-hidden="true">
-                  <div class="dog-scene">
-                    <span class="dog-track"></span>
+                <div class="mt-1.5 flex h-[3.9rem] items-center" aria-hidden="true">
+                  <div
+                    class="relative h-[3.45rem] w-full overflow-hidden rounded-full bg-[linear-gradient(180deg,rgba(248,242,255,0.96),rgba(255,255,255,0.5))] shadow-[inset_0_0_0_1px_rgba(222,206,244,0.65)]"
+                  >
+                    <span
+                      class="absolute bottom-[0.55rem] left-4 right-4 h-0.5 rounded-full bg-[linear-gradient(90deg,rgba(214,191,241,0.08),rgba(193,159,236,0.58),rgba(214,191,241,0.08))]"
+                    ></span>
 
                     <img
                       :src="currentDogSrc"
                       alt=""
-                      class="running-dog"
-                      :class="{ 'running-dog--entering': isDogEntering }"
+                      class="pointer-events-none absolute bottom-[0.28rem] z-[5] w-[3.25rem] drop-shadow-[0_6px_10px_rgba(79,36,133,0.16)] transition-[left,transform,opacity] duration-[80ms] max-sm:w-12"
+                      :style="runningDogStyle"
                     />
 
-                    <div class="dog-door">
+                    <div
+                      class="absolute bottom-[0.18rem] right-[0.85rem] z-[3] h-[2.55rem] w-[2.9rem] overflow-visible rounded-[1rem_1rem_0.35rem_0.35rem] border-2 border-[#B48AE4] bg-[linear-gradient(180deg,#E7D3FF,#D7BBF6)] shadow-[0_8px_18px_rgba(125,69,197,0.08)]"
+                    >
                       <div
-                        class="dog-door-inner"
-                        :class="{ 'dog-door-inner--active': isDogEntering }"
-                      ></div>
+                        class="absolute inset-[0.22rem] overflow-hidden rounded-[0.75rem_0.75rem_0.2rem_0.2rem] bg-[linear-gradient(180deg,rgba(124,66,195,0.22),rgba(81,33,139,0.45))]"
+                      >
+                        <span
+                          class="absolute -inset-[40%] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.95),rgba(232,198,255,0.4),rgba(232,198,255,0))] transition duration-300"
+                          :style="doorGlowStyle"
+                        ></span>
+                      </div>
 
                       <div
-                        class="dog-door-panel"
-                        :class="{ 'dog-door-panel--open': isDogEntering }"
+                        class="absolute inset-[0.08rem] rounded-[0.82rem_0.82rem_0.24rem_0.24rem] border border-[rgba(141,85,199,0.55)] bg-[linear-gradient(180deg,#F4EBFF,#DFC8F9)] shadow-[inset_-6px_0_0_rgba(141,85,199,0.08)] transition-transform duration-500 [transform-origin:right_center]"
+                        :style="doorPanelStyle"
                       >
-                        <span class="dog-door-knob"></span>
+                        <span class="absolute left-[0.36rem] top-4 h-[0.3rem] w-[0.3rem] rounded-full bg-[#7D45C5]"></span>
                       </div>
                     </div>
                   </div>
@@ -387,7 +532,12 @@ onBeforeUnmount(() => {
                   :disabled="isSubmitting"
                   class="group flex h-[3.05rem] w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-[#E83C9D] to-[#7430D0] px-5 text-base font-black text-white shadow-[0_16px_32px_rgba(132,56,194,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_38px_rgba(132,56,194,0.3)] disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  <img src="/images/paws-icon.png" alt="" class="button-paw" aria-hidden="true" />
+                  <img
+                    src="/images/paws-icon.png"
+                    alt=""
+                    class="h-[1.15rem] w-[1.15rem] object-contain brightness-0 invert"
+                    aria-hidden="true"
+                  />
                   {{ isSubmitting ? 'Entrando...' : 'Entrar a LadraLab' }}
                 </button>
               </form>
@@ -398,7 +548,7 @@ onBeforeUnmount(() => {
                 <img
                   src="/images/paws-icon.png"
                   alt=""
-                  class="separator-paw"
+                  class="h-3.5 w-3.5 object-contain opacity-35"
                   aria-hidden="true"
                 />
 
@@ -422,10 +572,12 @@ onBeforeUnmount(() => {
           <article
             v-for="feature in features"
             :key="feature.title"
-            class="feature-card group rounded-[1.45rem] border border-white/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(86,45,126,0.12)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(86,45,126,0.16)]"
+            class="group rounded-[1.45rem] border border-white/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(86,45,126,0.12)] backdrop-blur transition hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(86,45,126,0.16)]"
           >
-            <div class="flex items-center gap-3.5">
-              <div class="feature-icon">
+            <div class="flex items-center gap-3.5 max-sm:items-start">
+              <div
+                class="grid h-[3.95rem] w-[3.95rem] min-w-[3.95rem] place-items-center rounded-[1.2rem] bg-gradient-to-br from-[#F6EFFF] to-[#FFF5FB] shadow-[inset_0_0_0_1px_rgba(141,85,199,0.08)] transition group-hover:scale-[1.04] group-hover:-rotate-2 max-sm:h-[3.8rem] max-sm:w-[3.8rem] max-sm:min-w-[3.8rem]"
+              >
                 <img :src="feature.image" :alt="feature.alt" class="h-full w-full object-contain" />
               </div>
 
@@ -442,482 +594,5 @@ onBeforeUnmount(() => {
         </section>
       </div>
     </section>
-
   </main>
 </template>
-
-<style scoped>
-.login-page {
-  isolation: isolate;
-}
-
-.blob {
-  position: absolute;
-  border-radius: 999px;
-  opacity: 0.72;
-  filter: blur(1px);
-}
-
-.blob-1 {
-  left: -8rem;
-  top: 6rem;
-  width: 22rem;
-  height: 22rem;
-  background: radial-gradient(circle, rgba(232, 60, 157, 0.16), rgba(232, 60, 157, 0));
-}
-
-.blob-2 {
-  right: -9rem;
-  bottom: 2rem;
-  width: 26rem;
-  height: 26rem;
-  background: radial-gradient(circle, rgba(116, 48, 208, 0.16), rgba(116, 48, 208, 0));
-}
-
-.blob-3 {
-  left: 52%;
-  bottom: -15rem;
-  width: 34rem;
-  height: 34rem;
-  background: radial-gradient(circle, rgba(196, 153, 255, 0.2), rgba(196, 153, 255, 0));
-}
-
-.floating-paw {
-  position: absolute;
-  width: 1.6rem;
-  opacity: 0.16;
-  filter: saturate(0.9);
-}
-
-.floating-paw-1 {
-  top: 8%;
-  left: 3.4%;
-  transform: rotate(-18deg);
-}
-
-.floating-paw-2 {
-  top: 11%;
-  left: 5.5%;
-  width: 1.25rem;
-  transform: rotate(10deg);
-}
-
-.floating-paw-3 {
-  top: 15.2%;
-  left: 3.9%;
-  width: 1.2rem;
-  transform: rotate(-8deg);
-}
-
-.floating-paw-4 {
-  top: 18%;
-  left: 6.2%;
-  width: 1rem;
-  transform: rotate(14deg);
-}
-
-.floating-paw-5 {
-  right: 3.4%;
-  bottom: 8%;
-  transform: rotate(16deg);
-}
-
-.floating-paw-6 {
-  right: 5.6%;
-  bottom: 11.2%;
-  width: 1.25rem;
-  transform: rotate(-10deg);
-}
-
-.floating-paw-7 {
-  right: 3.8%;
-  bottom: 15.5%;
-  width: 1.2rem;
-  transform: rotate(8deg);
-}
-
-.floating-paw-8 {
-  right: 6.4%;
-  bottom: 18.2%;
-  width: 1rem;
-  transform: rotate(-14deg);
-}
-
-.brand-panel::after {
-  position: absolute;
-  inset: 0 -6rem 0 auto;
-  width: 12rem;
-  content: '';
-  background: white;
-  border-radius: 50% 0 0 50%;
-  opacity: 0.86;
-}
-
-.illustration-shell {
-  position: relative;
-  display: flex;
-  min-height: 160px;
-  align-items: flex-start;
-  justify-content: center;
-  margin-top: 0.2rem;
-  padding: 0.1rem 0.5rem 0;
-  overflow: hidden;
-  transform: translateX(-30px);
-}
-
-.illustration-shell::before {
-  position: absolute;
-  left: 10%;
-  right: 14%;
-  bottom: 0;
-  height: 84%;
-  content: '';
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(236, 221, 255, 0.98), rgba(236, 221, 255, 0));
-}
-
-.login-illustration {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: min(100%, 560px);
-  max-height: 215px;
-  margin: 0 auto;
-  object-fit: contain;
-  object-position: center top;
-  transform: translateX(-1.6rem);
-  filter: drop-shadow(0 16px 28px rgba(109, 80, 165, 0.14));
-}
-
-.input-shell {
-  position: relative;
-  display: flex;
-  min-height: 2.85rem;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid #d9c7ea;
-  border-radius: 1rem;
-  background: #fff;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.input-shell:focus-within {
-  border-color: #8d55c7;
-  box-shadow: 0 0 0 4px rgba(141, 85, 199, 0.12);
-}
-
-.input-shell--error {
-  border-color: #f5a1b4;
-}
-
-.input-shell--error:focus-within {
-  border-color: #ef5f80;
-  box-shadow: 0 0 0 4px rgba(239, 95, 128, 0.12);
-}
-
-.input-icon {
-  display: grid;
-  min-height: 2.85rem;
-  width: 2.85rem;
-  place-items: center;
-  background: #f2e9ff;
-  color: #7d45c5;
-}
-
-.input-field {
-  min-width: 0;
-  flex: 1;
-  background: transparent;
-  padding: 0 1rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #24113f;
-  outline: none;
-}
-
-.input-field::placeholder {
-  color: #a79ab8;
-}
-
-.error-text {
-  margin-top: 0.35rem;
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #ef4444;
-}
-
-.button-paw {
-  width: 1.15rem;
-  height: 1.15rem;
-  object-fit: contain;
-  filter: brightness(0) invert(1);
-}
-
-/* Perrito encima del botón */
-.dog-strip {
-  display: flex;
-  height: 3.9rem;
-  align-items: center;
-  margin-top: 0.35rem;
-}
-
-.dog-scene {
-  position: relative;
-  width: 100%;
-  height: 3.45rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(248, 242, 255, 0.96), rgba(255, 255, 255, 0.5));
-  box-shadow: inset 0 0 0 1px rgba(222, 206, 244, 0.65);
-}
-
-.dog-track {
-  position: absolute;
-  left: 1rem;
-  right: 1rem;
-  bottom: 0.55rem;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    rgba(214, 191, 241, 0.08),
-    rgba(193, 159, 236, 0.58),
-    rgba(214, 191, 241, 0.08)
-  );
-}
-
-.running-dog {
-  position: absolute;
-  left: 0.95rem;
-  bottom: 0.28rem;
-  z-index: 5;
-  width: 3.25rem;
-  height: auto;
-  opacity: 1;
-  transform: scale(1);
-  filter: drop-shadow(0 6px 10px rgba(79, 36, 133, 0.16));
-  pointer-events: none;
-}
-
-.running-dog--entering {
-  animation: dog-enter 1.25s ease-in-out forwards;
-}
-
-.dog-door {
-  position: absolute;
-  right: 0.85rem;
-  bottom: 0.18rem;
-  z-index: 3;
-  width: 2.9rem;
-  height: 2.55rem;
-  overflow: visible;
-  border: 2px solid #b48ae4;
-  border-radius: 1rem 1rem 0.35rem 0.35rem;
-  background: linear-gradient(180deg, #e7d3ff, #d7bbf6);
-  box-shadow: 0 8px 18px rgba(125, 69, 197, 0.08);
-}
-
-.dog-door-inner {
-  position: absolute;
-  inset: 0.22rem;
-  overflow: hidden;
-  border-radius: 0.75rem 0.75rem 0.2rem 0.2rem;
-  background: linear-gradient(180deg, rgba(124, 66, 195, 0.22), rgba(81, 33, 139, 0.45));
-}
-
-.dog-door-inner::after {
-  position: absolute;
-  inset: -40%;
-  content: '';
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(232, 198, 255, 0.4), rgba(232, 198, 255, 0));
-  opacity: 0;
-  transform: scale(0.5);
-  transition:
-    opacity 0.35s ease,
-    transform 0.35s ease;
-}
-
-.dog-door-inner--active::after {
-  opacity: 1;
-  transform: scale(1);
-  animation: door-glow 1.25s ease-in-out forwards;
-}
-
-.dog-door-panel {
-  position: absolute;
-  inset: 0.08rem;
-  border: 1px solid rgba(141, 85, 199, 0.55);
-  border-radius: 0.82rem 0.82rem 0.24rem 0.24rem;
-  background: linear-gradient(180deg, #f4ebff, #dfc8f9);
-  transform-origin: right center;
-  transition: transform 0.42s ease;
-  box-shadow: inset -6px 0 0 rgba(141, 85, 199, 0.08);
-}
-
-.dog-door-panel--open {
-  transform: perspective(240px) rotateY(74deg);
-}
-
-.dog-door-knob {
-  position: absolute;
-  left: 0.36rem;
-  top: 1rem;
-  width: 0.3rem;
-  height: 0.3rem;
-  border-radius: 999px;
-  background: #7d45c5;
-}
-
-.separator-paw {
-  width: 0.9rem;
-  height: 0.9rem;
-  object-fit: contain;
-  opacity: 0.36;
-}
-
-
-.feature-icon {
-  display: grid;
-  min-width: 3.95rem;
-  width: 3.95rem;
-  height: 3.95rem;
-  place-items: center;
-  border-radius: 1.2rem;
-  background: linear-gradient(135deg, #f6efff, #fff5fb);
-  box-shadow: inset 0 0 0 1px rgba(141, 85, 199, 0.08);
-  transition: transform 0.2s ease;
-}
-
-.feature-card:hover .feature-icon {
-  transform: scale(1.04) rotate(-2deg);
-}
-
-@keyframes dog-enter {
-  0% {
-    left: 0.95rem;
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  58% {
-    left: calc(100% - 8.7rem);
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  78% {
-    left: calc(100% - 6.55rem);
-    transform: scale(0.92);
-    opacity: 1;
-  }
-
-  92% {
-    left: calc(100% - 5.35rem);
-    transform: scale(0.55);
-    opacity: 1;
-  }
-
-  100% {
-    left: calc(100% - 4.75rem);
-    transform: scale(0.18);
-    opacity: 0;
-  }
-}
-
-@keyframes door-glow {
-  0% {
-    opacity: 0;
-    transform: scale(0.45);
-  }
-
-  28% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  72% {
-    opacity: 0.75;
-    transform: scale(1.08);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(1.25);
-  }
-}
-
-@media (max-width: 1023px) {
-  .brand-panel {
-    display: none;
-  }
-
-  .floating-paw-1,
-  .floating-paw-2,
-  .floating-paw-3,
-  .floating-paw-4 {
-    left: 2%;
-  }
-
-  .floating-paw-5,
-  .floating-paw-6,
-  .floating-paw-7,
-  .floating-paw-8 {
-    right: 2%;
-  }
-
-  .login-illustration {
-    transform: translateX(-0.8rem);
-  }
-}
-
-@media (max-width: 640px) {
-  .feature-card .flex {
-    align-items: flex-start;
-  }
-
-  .feature-icon {
-    min-width: 3.8rem;
-    width: 3.8rem;
-    height: 3.8rem;
-  }
-
-  .running-dog {
-    width: 3rem;
-  }
-
-  @keyframes dog-enter {
-    0% {
-      left: 0.8rem;
-      transform: scale(1);
-      opacity: 1;
-    }
-
-    58% {
-      left: calc(100% - 8rem);
-      transform: scale(1);
-      opacity: 1;
-    }
-
-    78% {
-      left: calc(100% - 6.4rem);
-      transform: scale(0.92);
-      opacity: 1;
-    }
-
-    92% {
-      left: calc(100% - 5.3rem);
-      transform: scale(0.55);
-      opacity: 1;
-    }
-
-    100% {
-      left: calc(100% - 4.7rem);
-      transform: scale(0.18);
-      opacity: 0;
-    }
-  }
-}
-</style>
